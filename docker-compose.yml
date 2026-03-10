@@ -1,0 +1,70 @@
+# Two-Stage Search Pipeline: Instacart retrieval + ESCI reranking
+#
+# Prerequisites:
+# - Instacart repo: clone https://github.com/chen-bowen/instacart_next_order_recommendation
+#   into ./instacart_next_order_recommendation (or symlink from Instacart_Personalization)
+# - ESCI repo: clone https://github.com/chen-bowen/Amazon_Multitask_Search_Ranking
+#   into ./Amazon_Multitask_Search_Ranking (or symlink from Amazon_Search_Retrieval)
+#
+# For local dev with sibling repos, use:
+#   INSTACART_CONTEXT=../Instacart_Personalization ESCI_CONTEXT=../Amazon_Search_Retrieval docker compose up
+#
+# Or create docker-compose.override.yml with build contexts adjusted for your layout.
+
+services:
+  instacart-api:
+    build:
+      context: ${INSTACART_CONTEXT:-../Instacart_Personalization}
+      dockerfile: Dockerfile
+    container_name: instacart-api
+    environment:
+      MODEL_DIR: /app/models/two_tower_sbert/final
+      CORPUS_PATH: /app/processed/p5_mp20_ef0.1/eval_corpus.json
+      INFERENCE_DEVICE: cpu
+    volumes:
+      - ${INSTACART_MODELS:-../Instacart_Personalization/models}:/app/models
+      - ${INSTACART_PROCESSED:-../Instacart_Personalization/processed}:/app/processed
+      - ${INSTACART_DATA:-../Instacart_Personalization/data}:/app/data
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  esci-api:
+    build:
+      context: ${ESCI_CONTEXT:-../Amazon_Search_Retrieval}
+      dockerfile: Dockerfile
+    container_name: esci-api
+    environment:
+      MODEL_PATH: /app/checkpoints/multi_task_reranker
+      INFERENCE_DEVICE: cpu
+    volumes:
+      - ${ESCI_CHECKPOINTS:-../Amazon_Search_Retrieval/checkpoints/multi_task_reranker}:/app/checkpoints/multi_task_reranker:ro
+    ports:
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: two-stage-orchestrator
+    environment:
+      INSTACART_URL: http://instacart-api:8000
+      ESCI_URL: http://esci-api:8000
+    depends_on:
+      instacart-api:
+        condition: service_healthy
+      esci-api:
+        condition: service_healthy
+    ports:
+      - "8080:8080"

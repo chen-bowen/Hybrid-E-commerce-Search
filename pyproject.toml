@@ -1,0 +1,18 @@
+[project]
+name = "hybrid-ecommerce-search"
+version = "0.1.0"
+description = "Two-stage search pipeline: Instacart retrieval + ESCI reranking"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "httpx>=0.26.0",
+    "pydantic>=2.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["orchestrator_service"]

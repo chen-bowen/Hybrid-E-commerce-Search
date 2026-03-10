@@ -1,0 +1,31 @@
+:root {
+  --bg: #0f0f12;
+  --bg-card: #1a1a1f;
+  --border: #2a2a32;
+  --text: #e8e8ed;
+  --text-muted: #9a9aa5;
+  --accent: #6366f1;
+  --accent-hover: #818cf8;
+  --e-exact: #22c55e;
+  --e-substitute: #3b82f6;
+  --e-complement: #f59e0b;
+  --e-irrelevant: #6b7280;
+  --up: #22c55e;
+  --down: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+#root {
+  min-height: 100vh;
+}

@@ -1,0 +1,118 @@
+import { useState } from "react";
+
+const SAMPLE_USERS = ["3178496", "12345", "67890"];
+const SAMPLE_QUERIES = [
+  "organic whole wheat bread",
+  "low fat milk",
+  "fresh vegetables",
+];
+
+interface QueryFormProps {
+  onSubmit: (params: {
+    user_id?: string;
+    user_context?: string;
+    query: string;
+    top_k_retrieve: number;
+    top_k_final: number;
+  }) => void;
+  loading: boolean;
+  apiUrl: string;
+  onApiUrlChange: (url: string) => void;
+}
+
+export function QueryForm({
+  onSubmit,
+  loading,
+  apiUrl,
+  onApiUrlChange,
+}: QueryFormProps) {
+  const [userId, setUserId] = useState("3178496");
+  const [query, setQuery] = useState("organic whole wheat bread");
+  const [topKRetrieve, setTopKRetrieve] = useState(50);
+  const [topKFinal, setTopKFinal] = useState(10);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit({
+      user_id: userId,
+      query,
+      top_k_retrieve: topKRetrieve,
+      top_k_final: topKFinal,
+    });
+  };
+
+  const pickRandomUser = () => {
+    setUserId(SAMPLE_USERS[Math.floor(Math.random() * SAMPLE_USERS.length)]);
+  };
+
+  const pickRandomQuery = () => {
+    setQuery(SAMPLE_QUERIES[Math.floor(Math.random() * SAMPLE_QUERIES.length)]);
+  };
+
+  return (
+    <form className="query-form" onSubmit={handleSubmit}>
+      <label>
+        API URL
+        <input
+          type="text"
+          value={apiUrl}
+          onChange={(e) => onApiUrlChange(e.target.value)}
+          placeholder="http://localhost:8080"
+        />
+      </label>
+      <label>
+        User ID
+        <div className="input-row">
+          <input
+            type="text"
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+            placeholder="3178496"
+          />
+          <button type="button" onClick={pickRandomUser} title="Random user">
+            Random
+          </button>
+        </div>
+      </label>
+      <label>
+        Query
+        <div className="input-row">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="organic whole wheat bread"
+          />
+          <button type="button" onClick={pickRandomQuery} title="Random query">
+            Random
+          </button>
+        </div>
+      </label>
+      <label>
+        Retrieve (Stage 1)
+        <input
+          type="range"
+          min={10}
+          max={100}
+          value={topKRetrieve}
+          onChange={(e) => setTopKRetrieve(Number(e.target.value))}
+        />
+        <span>{topKRetrieve}</span>
+      </label>
+      <label>
+        Final (Stage 2)
+        <input
+          type="range"
+          min={5}
+          max={50}
+          value={topKFinal}
+          onChange={(e) => setTopKFinal(Number(e.target.value))}
+        />
+        <span>{topKFinal}</span>
+      </label>
+      <button type="submit" disabled={loading}>
+        {loading ? "Searching…" : "Search"}
+      </button>
+    </form>
+  );
+}
