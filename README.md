@@ -41,6 +41,7 @@ docker compose up --build
    - Instacart: `uv run uvicorn src.api.main:app --port 8000` (from the Instacart repo).
    - ESCI: `uv run uvicorn src.api.main:app --port 8001` (from the ESCI repo; ESCI runs on 8000 internally, map 8001:8000 if needed).
 4. **Verify:** Start the orchestrator and call `POST /search`; it will return 502/503 if the backends are unreachable.
+5. **Pre-commit (optional):** `uv run pre-commit install` to run hooks on git commit.
 
 ---
 
@@ -242,8 +243,8 @@ The orchestrator calls two backend services. Their exact request/response schema
 
 ### Instacart retrieval API (Stage 1)
 
-**Repository:** [instacart_next_order_recommendation](https://github.com/chen-bowen/instacart_next_order_recommendation) (or `Instacart_Personalization` locally)  
-**Base URL:** `http://localhost:8000` (default)  
+**Repository:** [instacart_next_order_recommendation](https://github.com/chen-bowen/instacart_next_order_recommendation) (or `Instacart_Personalization` locally)
+**Base URL:** `http://localhost:8000` (default)
 **Endpoint:** `POST /recommend`
 
 **Request:**
@@ -263,8 +264,8 @@ Either `user_context` or `user_id` is required.
 
 ### Amazon ESCI reranker API (Stage 2)
 
-**Repository:** [Amazon_Multitask_Search_Ranking](https://github.com/chen-bowen/Amazon_Multitask_Search_Ranking) (or `Amazon_Search_Retrieval` locally)  
-**Base URL:** `http://localhost:8001` (default)  
+**Repository:** [Amazon_Multitask_Search_Ranking](https://github.com/chen-bowen/Amazon_Multitask_Search_Ranking) (or `Amazon_Search_Retrieval` locally)
+**Base URL:** `http://localhost:8001` (default)
 **Endpoint:** `POST /predict` (combined: ranking + ESCI class + substitute)
 
 **Request:**
