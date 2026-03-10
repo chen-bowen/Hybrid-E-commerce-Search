@@ -7,7 +7,7 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
-COPY orchestrator_service/ ./orchestrator_service/
+COPY backend/ ./backend/
 RUN uv sync --frozen --no-dev
 
 # Runtime stage
@@ -18,9 +18,9 @@ WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 
-COPY orchestrator_service/ ./orchestrator_service/
+COPY backend/ ./backend/
 COPY pyproject.toml ./
 
 EXPOSE 8080
 
-CMD ["uvicorn", "orchestrator_service.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8080"]

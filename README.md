@@ -4,47 +4,22 @@ This project wires two existing systems into a **two-stage search pipeline**: a 
 
 Related repos: [instacart_next_order_recommendation](https://github.com/chen-bowen/instacart_next_order_recommendation), [Amazon_Multitask_Search_Ranking](https://github.com/chen-bowen/Amazon_Multitask_Search_Ranking).
 
-**Contents:** [What we're building](#what-were-building) · [Architecture](#overall-architecture) · [Requirements](#requirements) · [Setup](#setup) · [How to use each component](#how-to-use-each-component) · [Pipeline](#pipeline) · [API](#api) · [Backend API contracts](#backend-api-contracts) · [Web UI](#web-ui) · [Docker](#docker) · [Limitations](#limitations) · [Project structure](#project-structure)
+**Contents:** [Quick start](#quick-start) · [Requirements](#requirements) · [Setup](#setup) · [How to use each component](#how-to-use-each-component) · [Pipeline](#pipeline) · [Architecture](#overall-architecture) · [API](#api) · [Web UI](#web-ui) · [Docker](#docker) · [Backend API contracts](#backend-api-contracts) · [Limitations](#limitations) · [Project structure](#project-structure)
 
 ---
 
-## What we're building
+## Quick start
 
-- **Task:** Combine retrieval (Stage 1) and reranking (Stage 2) into one search flow. Given a user context and a text query, return a ranked list of products with both retrieval scores and ESCI relevance labels.
-- **Input:** `user_id` or `user_context` (for Instacart retrieval) plus a `query` string (for ESCI reranking).
-- **Output:** Top-k products with `rec_score` (retrieval), `rerank_score`, `esci_label` (E/S/C/I), `is_substitute`, and `product_text`. Stats include per-stage latency.
-- **Train vs serve:** This repo does **not** train models. It orchestrates two pre-trained services: Instacart (two-tower SBERT on grocery co-purchase) and ESCI (multi-task cross-encoder on Amazon product search). Both must be running separately.
+**Docker (recommended):**
 
----
-
-## Overall Architecture
-
-```mermaid
-flowchart LR
-  user[User] --> orchestrator[OrchestratorAPI]
-  orchestrator --> instacartAPI[InstacartAPI]
-  instacartAPI --> orchestrator
-  orchestrator --> esciAPI[ESCIRerankerAPI]
-  esciAPI --> orchestrator
-  orchestrator --> results[RankedResults]
+```bash
+./scripts/setup_deps.sh   # clones Instacart + ESCI into deps/
+docker compose up --build
 ```
 
-**Flow:**
+**Local dev:** `uv sync`, then start Instacart (8000) and ESCI (8001) from their repos, then `uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080`. See [Pipeline](#pipeline) for details.
 
-1. User sends a search request (query + user_id or user_context) to the orchestrator.
-2. Orchestrator calls **Instacart** `POST /recommend` → retrieves top-K product candidates.
-3. Orchestrator converts candidates to `{product_id, text}` and calls **ESCI** `POST /predict` with the query.
-4. ESCI returns reranked list with scores, ESCI labels (E/S/C/I), and substitute flags.
-5. Orchestrator joins metadata and returns the final ranked list.
-
----
-
-## How this model could be used
-
-- **Search UX:** Combine behavioral retrieval (e.g. "buy again" from prior orders) with a text query reranker for hybrid search surfaces.
-- **Architecture exploration:** Demonstrate the two-stage pattern (retrieval → reranking) used in production search, RAG, and recommendation systems.
-- **A/B testing:** Compare Instacart-only vs Instacart+ESCI reranking on qualitative examples or offline metrics.
-- **Blog / teaching:** Use the pipeline and UI as a concrete example for articles on retrieval–reranking architecture.
+**What we're building:** Two-stage search (Instacart retrieval → ESCI reranking). Input: `user_id` or `user_context` + `query`. Output: ranked products with `rec_score`, `rerank_score`, `esci_label` (E/S/C/I). This repo orchestrates pre-trained services; it does not train models.
 
 ---
 
@@ -60,37 +35,33 @@ flowchart LR
 
 ## Setup
 
-1. **Clone or open the repo** and enter the project root.
-
-2. **Install dependencies** (prefer `uv` for a locked environment):
-
-```bash
-uv sync
-```
-
-3. **Ensure Instacart and ESCI services are available.** You need trained models and data in those repos. Run:
-
+1. **Clone this repo** and enter the project root.
+2. **For Docker:** Run `./scripts/setup_deps.sh` to clone the backend repos into `deps/`.
+3. **For local dev:** Install orchestrator deps with `uv sync`. Ensure Instacart and ESCI services are available (trained models and data in those repos). Run:
    - Instacart: `uv run uvicorn src.api.main:app --port 8000` (from the Instacart repo).
    - ESCI: `uv run uvicorn src.api.main:app --port 8001` (from the ESCI repo; ESCI runs on 8000 internally, map 8001:8000 if needed).
-
 4. **Verify:** Start the orchestrator and call `POST /search`; it will return 502/503 if the backends are unreachable.
 
 ---
 
 ## How to use each component
 
-| Component        | Command / Usage                                                                                      | When to use                                              |
-| ---------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| **Orchestrator** | `uv run uvicorn orchestrator_service.main:app --host 0.0.0.0 --port 8080`                           | Serve the two-stage search API                            |
-| **Smoke test**   | `uv run python scripts/two_stage_search.py --user-id 3178496 --query "organic whole wheat bread"`   | One-off CLI test of the search endpoint                   |
-| **Web UI**       | `cd ui/web && npm install && npm run dev`                                                             | Interactive exploration; side-by-side and diff views      |
-| **Docker**       | `docker compose up --build`                                                                          | Run all three services (Instacart, ESCI, orchestrator)    |
+
+| Component        | Command / Usage                                                                                   | When to use                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| **Orchestrator** | `uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080`                                      | Serve the two-stage search API                         |
+| **Smoke script** | `uv run two-stage-search --user-id 3178496 --query "organic whole wheat bread"`                  | CLI smoke script for the search endpoint               |
+| **Web UI**       | `cd frontend && npm install && npm run dev`                                                      | Interactive exploration; side-by-side and diff views   |
+| **Docker**       | `./scripts/setup_deps.sh` then `docker compose up --build`                                         | Run all three services (Instacart, ESCI, orchestrator) |
+
 
 **Typical workflow:** 1) Start Instacart and ESCI services → 2) Start orchestrator → 3) Use UI or smoke script to explore.
 
+**Run unit tests:** `uv sync --extra dev && uv run pytest tests/ -v`
+
 ---
 
-## Pipeline
+## Running the components locally
 
 ### 1. Start backends
 
@@ -115,7 +86,7 @@ Note: ESCI runs on 8000 internally; expose it externally on 8001 for the orchest
 ```bash
 cd Hybrid_Ecommerce_Search
 uv sync
-uv run uvicorn orchestrator_service.main:app --host 0.0.0.0 --port 8080
+uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080
 ```
 
 ### 3. Call the search endpoint
@@ -129,8 +100,26 @@ curl -X POST http://localhost:8080/search \
 Or use the smoke test script:
 
 ```bash
-uv run python scripts/two_stage_search.py --user-id 3178496 --query "organic whole wheat bread"
+uv run two-stage-search --user-id 3178496 --query "organic whole wheat bread"
 ```
+
+---
+
+## Overall Architecture
+
+```mermaid
+flowchart LR
+  user[User] --> orchestrator[OrchestratorAPI]
+  orchestrator --> instacartAPI[InstacartAPI]
+  instacartAPI --> orchestrator
+  orchestrator --> esciAPI[ESCIRerankerAPI]
+  esciAPI --> orchestrator
+  orchestrator --> results[RankedResults]
+```
+
+
+
+**Flow:** 1) User → orchestrator (query + user_id/user_context). 2) Orchestrator → Instacart `POST /recommend` → top-K candidates. 3) Orchestrator → ESCI `POST /predict` with query + candidates. 4) ESCI → reranked list with scores, ESCI labels, substitute flags. 5) Orchestrator → final ranked list.
 
 ---
 
@@ -141,25 +130,29 @@ The orchestrator exposes a single search endpoint.
 ### Run locally
 
 ```bash
-uv run uvicorn orchestrator_service.main:app --host 0.0.0.0 --port 8080
+uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080
 ```
 
 **Environment variables:**
 
-| Variable           | Description                                                             |
-| ------------------ | ----------------------------------------------------------------------- |
-| `INSTACART_URL`    | Instacart API base URL (default: `http://localhost:8000`)               |
-| `ESCI_URL`         | ESCI API base URL (default: `http://localhost:8001`)                    |
-| `INSTACART_API_KEY`| Optional API key for Instacart (`X-API-Key` header)                      |
-| `ESCI_API_KEY`     | Optional API key for ESCI (`X-API-Key` header)                           |
+
+| Variable            | Description                                               |
+| ------------------- | --------------------------------------------------------- |
+| `INSTACART_URL`     | Instacart API base URL (default: `http://localhost:8000`) |
+| `ESCI_URL`          | ESCI API base URL (default: `http://localhost:8001`)      |
+| `INSTACART_API_KEY` | Optional API key for Instacart (`X-API-Key` header)       |
+| `ESCI_API_KEY`      | Optional API key for ESCI (`X-API-Key` header)            |
+
 
 ### Endpoints
 
-| Method | Path       | Description                          |
-| ------ | ---------- | ------------------------------------ |
-| GET    | `/health`  | Liveness probe                       |
-| GET    | `/ready`   | Readiness probe                      |
-| POST   | `/search`  | Two-stage search (see below)         |
+
+| Method | Path      | Description                  |
+| ------ | --------- | ---------------------------- |
+| GET    | `/health` | Liveness probe               |
+| GET    | `/ready`  | Readiness probe              |
+| POST   | `/search` | Two-stage search (see below) |
+
 
 ### POST /search
 
@@ -185,15 +178,17 @@ Alternatively, provide `user_context` instead of `user_id`:
 }
 ```
 
-| Field            | Type     | Required | Default | Description                                      |
-| ---------------- | -------- | -------- | ------- | ------------------------------------------------ |
-| `user_id`        | string   | No*      | —       | User ID resolvable via Instacart eval_queries    |
-| `user_context`   | string   | No*      | —       | Full user context string for Instacart           |
-| `query`          | string   | Yes      | —       | Search query for ESCI reranking                  |
-| `top_k_retrieve` | integer  | No       | 50      | Number of candidates from Instacart (1–200)      |
-| `top_k_final`    | integer  | No       | 10      | Number of final results returned (1–100)         |
 
-*Either `user_id` or `user_context` is required.
+| Field            | Type    | Required | Default | Description                                   |
+| ---------------- | ------- | -------- | ------- | --------------------------------------------- |
+| `user_id`        | string  | No       | —       | User ID resolvable via Instacart eval_queries |
+| `user_context`   | string  | No       | —       | Full user context string for Instacart        |
+| `query`          | string  | Yes      | —       | Search query for ESCI reranking               |
+| `top_k_retrieve` | integer | No       | 50      | Number of candidates from Instacart (1–200)   |
+| `top_k_final`    | integer | No       | 10      | Number of final results returned (1–100)      |
+
+
+Either `user_id` or `user_context` is required.
 
 **Response:**
 
@@ -253,14 +248,14 @@ The orchestrator calls two backend services. Their exact request/response schema
 
 **Request:**
 
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `user_context` | string \| null | No* | null | Full user context string (max 10,000 chars) |
-| `user_id` | string \| null | No* | null | User ID resolvable via eval_queries.json |
-| `top_k` | integer | No | 10 | Number of recommendations (1–100) |
-| `exclude_product_ids` | string[] | No | [] | Product IDs to exclude |
+| Field                 | Type     | Required | Default | Description                       |
+| --------------------- | -------- | -------- | ------- | --------------------------------- | ------------------------------------------- |
+| `user_context`        | string   | null     | No    | null                              | Full user context string (max 10,000 chars) |
+| `user_id`             | string   | null     | No    | null                              | User ID resolvable via eval_queries.json    |
+| `top_k`               | integer  | No       | 10      | Number of recommendations (1–100) |
+| `exclude_product_ids` | string[] | No       | []      | Product IDs to exclude            |
 
-*Either `user_context` or `user_id` is required.
+Either `user_context` or `user_id` is required.
 
 **Response:** `request_id`, `recommendations` (array of `{product_id, score, product_text}`), `stats` (optional: `total_latency_ms`, `query_embedding_time_ms`, `similarity_compute_time_ms`, `num_recommendations`, `top_score`, `avg_score`, `timestamp`).
 
@@ -274,10 +269,12 @@ The orchestrator calls two backend services. Their exact request/response schema
 
 **Request:**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `query` | string | Yes | User search query |
-| `candidates` | CandidateItem[] | Yes | List of `{product_id, text}` |
+
+| Field        | Type            | Required | Description                  |
+| ------------ | --------------- | -------- | ---------------------------- |
+| `query`      | string          | Yes      | User search query            |
+| `candidates` | CandidateItem[] | Yes      | List of `{product_id, text}` |
+
 
 **Response:** `request_id`, `ranked` (array of `{product_id, score, esci_class, is_substitute}`), `stats` (`total_latency_ms`, `model_forward_time_ms`, `num_candidates`, `num_recommendations`, `device`, `top_score`, `avg_score`, `timestamp`).
 
@@ -296,17 +293,17 @@ The orchestrator calls two backend services. Their exact request/response schema
 
 ## Web UI
 
-A React/Vite web UI is available in `ui/web/` for interactive exploration.
+A React/Vite web UI is available in `frontend/` for interactive exploration.
 
 ### Run
 
 ```bash
-cd ui/web
+cd frontend
 npm install
 npm run dev
 ```
 
-Open http://localhost:5173. Configure the API URL (default: `http://localhost:8080`) in the sidebar.
+Open [http://localhost:5173](http://localhost:5173). Configure the API URL (default: `http://localhost:8080`) in the sidebar.
 
 ### Features
 
@@ -320,12 +317,15 @@ Open http://localhost:5173. Configure the API URL (default: `http://localhost:80
 
 ## Docker
 
-Build and run all three services with Docker Compose.
+This repo is a **meta-repo**: it orchestrates the pipeline and pulls in the backend repos on demand.
 
-### Prerequisites
+### One-time setup
 
-- Instacart and ESCI repos as sibling directories (or set `INSTACART_CONTEXT` and `ESCI_CONTEXT`)
-- Trained models and data in those repos (see their READMEs)
+```bash
+./scripts/setup_deps.sh
+```
+
+This clones [instacart_next_order_recommendation](https://github.com/chen-bowen/instacart_next_order_recommendation) and [Amazon_Multitask_Search_Ranking](https://github.com/chen-bowen/Amazon_Multitask_Search_Ranking) into `deps/instacart` and `deps/esci`. You must have trained models and data in those repos (see their READMEs).
 
 ### Build and run
 
@@ -333,26 +333,29 @@ Build and run all three services with Docker Compose.
 docker compose up --build
 ```
 
-By default, the compose file expects:
+### Override for existing sibling repos
 
-- `../Instacart_Personalization` (or `../instacart_next_order_recommendation`)
-- `../Amazon_Search_Retrieval` (or `../Amazon_Multitask_Search_Ranking`)
-
-Override with env vars:
+If you already have the backends cloned elsewhere:
 
 ```bash
-INSTACART_CONTEXT=../instacart_next_order_recommendation \
-ESCI_CONTEXT=../Amazon_Multitask_Search_Ranking \
+INSTACART_CONTEXT=../Instacart_Personalization \
+ESCI_CONTEXT=../Amazon_Search_Retrieval \
+INSTACART_MODELS=../Instacart_Personalization/models \
+INSTACART_PROCESSED=../Instacart_Personalization/processed \
+INSTACART_DATA=../Instacart_Personalization/data \
+ESCI_CHECKPOINTS=../Amazon_Search_Retrieval/checkpoints/multi_task_reranker \
 docker compose up --build
 ```
 
 ### Services
 
-| Service        | Port | Description                    |
-| -------------- | ---- | ------------------------------ |
-| instacart-api  | 8000 | Instacart retrieval            |
-| esci-api       | 8001 | ESCI reranker (mapped from 8000) |
-| orchestrator   | 8080 | Two-stage search API           |
+
+| Service       | Port | Description                      |
+| ------------- | ---- | -------------------------------- |
+| instacart-api | 8000 | Instacart retrieval              |
+| esci-api      | 8001 | ESCI reranker (mapped from 8000) |
+| orchestrator  | 8080 | Two-stage search API             |
+
 
 ---
 
@@ -368,14 +371,18 @@ docker compose up --build
 
 ## Project structure
 
-| Path                          | Description                                                                 |
-| ----------------------------- | --------------------------------------------------------------------------- |
-| **orchestrator_service/**     | FastAPI orchestrator: `main.py`, `schemas.py`                               |
-| **ui/web/**                   | React/Vite web UI: query form, side-by-side and diff views, stats bar        |
-| **scripts/two_stage_search.py** | Smoke test script for `POST /search`                                     |
-| **Dockerfile**                | Multi-stage build for orchestrator (uv)                                     |
-| **docker-compose.yml**        | Instacart, ESCI, orchestrator services                                     |
-| **pyproject.toml**, **uv.lock** | Project and dependency lock (uv)                                          |
+
+| Path                            | Description                                                           |
+| ------------------------------- | --------------------------------------------------------------------- |
+| **backend/**                    | FastAPI orchestrator: `main.py`, `schemas.py`                         |
+| **frontend/**                   | React/Vite web UI: query form, side-by-side and diff views, stats bar |
+| **backend/two_stage_search.py** | CLI smoke script for `POST /search` (run: `uv run two-stage-search`) |
+| **scripts/setup_deps.sh**      | Clone Instacart + ESCI repos into `deps/` for Docker                 |
+| **tests/**                     | Unit tests (e.g. `tests/test_schemas.py`)                           |
+| **Dockerfile**                  | Multi-stage build for orchestrator (uv)                               |
+| **docker-compose.yml**          | Instacart, ESCI, orchestrator services                                |
+| **pyproject.toml**, **uv.lock** | Project and dependency lock (uv)                                      |
+
 
 ---
 

@@ -10,9 +10,15 @@ dependencies = [
     "pydantic>=2.0.0",
 ]
 
+[project.optional-dependencies]
+dev = ["pytest>=7.0.0"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[project.scripts]
+two-stage-search = "backend.two_stage_search:main"
+
 [tool.hatch.build.targets.wheel]
-packages = ["orchestrator_service"]
+packages = ["backend"]

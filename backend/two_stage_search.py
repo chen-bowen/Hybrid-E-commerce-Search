@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-Smoke test for the two-stage search pipeline.
+Smoke script for the two-stage search pipeline.
 
 Sends sample requests to the orchestrator POST /search endpoint and prints
 a readable table of results with scores and ESCI labels.
 
 Usage:
-    python scripts/two_stage_search.py [--url URL] [--user-id ID] [--query QUERY]
+    uv run two-stage-search [--url URL] [--user-id ID] [--query QUERY]
+    uv run python -m backend.two_stage_search [--url URL] ...
 
-Requires: Orchestrator running at http://localhost:8080 (or ORCHESTRATOR_URL).
-Run with: uv run python scripts/two_stage_search.py
+Requires: Orchestrator running at http://localhost:8080 (or --url).
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ import httpx
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Two-stage search smoke test")
+    parser = argparse.ArgumentParser(description="Two-stage search smoke script")
     parser.add_argument(
         "--url",
         default="http://localhost:8080",

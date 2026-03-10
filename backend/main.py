@@ -15,7 +15,7 @@ from uuid import uuid4
 import httpx
 from fastapi import FastAPI, HTTPException, status
 
-from orchestrator_service.schemas import FinalItem, TwoStageRequest, TwoStageResponse
+from backend.schemas import FinalItem, TwoStageRequest, TwoStageResponse
 
 logger = logging.getLogger(__name__)
 
