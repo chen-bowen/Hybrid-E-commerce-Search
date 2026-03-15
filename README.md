@@ -326,11 +326,48 @@ This repo is a **meta-repo**: it orchestrates the pipeline and pulls in the back
 ./scripts/setup_deps.sh
 ```
 
-This clones [instacart_next_order_recommendation](https://github.com/chen-bowen/instacart_next_order_recommendation) and [Amazon_Multitask_Search_Ranking](https://github.com/chen-bowen/Amazon_Multitask_Search_Ranking) into `deps/instacart` and `deps/esci`. You must have trained models and data in those repos (see their READMEs).
+This clones [instacart_next_order_recommendation](https://github.com/chen-bowen/instacart_next_order_recommendation) and [Amazon_Multitask_Search_Ranking](https://github.com/chen-bowen/Amazon_Multitask_Search_Ranking) into `deps/stage-1` and `deps/stage-2`.
+
+**Stage 1 (Instacart) prerequisites** (in `deps/stage-1/`):
+
+You can run Stage 1 in two ways: **HF-only (recommended for Docker)** or **local files**.
+
+1. **Corpus:**
+   - **HF-only (recommended):** Ensure the public dataset [chenbowen184/instacart-eval-corpus](https://huggingface.co/datasets/chenbowen184/instacart-eval-corpus) exists and contains `eval_corpus.json`. If it doesn't exist, run `uv run python -m src.data.prepare_instacart_sbert` to generate the corpus locally, then `uv run python scripts/upload_corpus_to_hf.py` from `deps/stage-1/`.
+   - **Local:** Download the [Instacart dataset](https://www.kaggle.com/c/instacart-market-basket-analysis/data) into `data/`, then `uv run python -m src.data.prepare_instacart_sbert` → creates `processed/p5_mp20_ef0.1/eval_corpus.json`. Mount this into Docker via `INSTACART_PROCESSED` if you prefer not to use HF.
+2. **Model:**
+   - **HF-only (recommended):** Upload the trained two-tower model to a Hugging Face repo, e.g. [`chenbowen184/instacart-two-tower-sbert`](https://huggingface.co/chenbowen184/instacart-two-tower-sbert). The Docker compose file is configured to use this HF model ID as `MODEL_DIR`.
+   - **Local:** Run training in `deps/stage-1/` with `uv run python -m src.training` → creates `models/two_tower_sbert/final/`, and set `MODEL_DIR=/app/models/two_tower_sbert/final` with a corresponding volume mount.
+
+**Stage 2 (ESCI) prerequisites** (in `deps/stage-2/`): trained checkpoint at `checkpoints/multi_task_reranker/` (see that repo's README).
 
 ### Build and run
 
+By default, `docker-compose.yml` is wired to use **Hugging Face-only** for Stage 1:
+
+- `MODEL_DIR=chenbowen184/instacart-two-tower-sbert`
+- `CORPUS_HF_REPO=chenbowen184/instacart-eval-corpus`
+- `CORPUS_HF_REPO_TYPE=dataset`
+
+For public HF repos (no auth):
+
 ```bash
+HF_TOKEN="" docker compose up --build
+```
+
+For private HF model/corpus repos, pass a valid token:
+
+```bash
+HF_TOKEN=your_hf_token docker compose up --build
+```
+
+If you prefer **local files** instead of HF, you can override the defaults, e.g.:
+
+```bash
+INSTACART_MODELS=./deps/stage-1/models \
+INSTACART_PROCESSED=./deps/stage-1/processed \
+MODEL_DIR=/app/models/two_tower_sbert/final \
+CORPUS_HF_REPO="" \
 docker compose up --build
 ```
 
@@ -353,8 +390,8 @@ docker compose up --build
 
 | Service       | Port | Description                      |
 | ------------- | ---- | -------------------------------- |
-| instacart-api | 8000 | Instacart retrieval              |
-| esci-api      | 8001 | ESCI reranker (mapped from 8000) |
+| stage-1-api   | 8000 | Stage 1: Instacart retrieval    |
+| stage-2-api   | 8001 | Stage 2: ESCI reranker           |
 | orchestrator  | 8080 | Two-stage search API             |
 
 
