@@ -28,15 +28,15 @@ export interface SearchResponse {
     request_id?: string;
     num_candidates?: number;
     num_returned?: number;
-    instacart_stats?: Record<string, unknown>;
-    esci_stats?: Record<string, unknown>;
+    stage_1_stats?: Record<string, unknown>;
+    stage_2_stats?: Record<string, unknown>;
     total_latency_ms?: number;
   };
 }
 
 export async function search(
   request: SearchRequest,
-  baseUrl: string = DEFAULT_BASE_URL
+  baseUrl: string = DEFAULT_BASE_URL,
 ): Promise<SearchResponse> {
   const url = `${baseUrl.replace(/\/$/, "")}/search`;
   const res = await fetch(url, {

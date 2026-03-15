@@ -47,14 +47,12 @@ docker compose up --build
 
 ## How to use each component
 
-
-| Component        | Command / Usage                                                                                   | When to use                                            |
-| ---------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| **Orchestrator** | `uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080`                                      | Serve the two-stage search API                         |
-| **Smoke script** | `uv run two-stage-search --user-id 3178496 --query "organic whole wheat bread"`                  | CLI smoke script for the search endpoint               |
-| **Web UI**       | `cd frontend && npm install && npm run dev`                                                      | Interactive exploration; side-by-side and diff views   |
-| **Docker**       | `./scripts/setup_deps.sh` then `docker compose up --build`                                         | Run all three services (Instacart, ESCI, orchestrator) |
-
+| Component        | Command / Usage                                                                 | When to use                                            |
+| ---------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| **Orchestrator** | `uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080`                    | Serve the two-stage search API                         |
+| **Smoke script** | `uv run two-stage-search --user-id 3178496 --query "organic whole wheat bread"` | CLI smoke script for the search endpoint               |
+| **Web UI**       | `cd frontend && npm install && npm run dev`                                     | Interactive exploration; side-by-side and diff views   |
+| **Docker**       | `./scripts/setup_deps.sh` then `docker compose up --build`                      | Run all three services (Instacart, ESCI, orchestrator) |
 
 **Typical workflow:** 1) Start Instacart and ESCI services → 2) Start orchestrator → 3) Use UI or smoke script to explore.
 
@@ -95,7 +93,12 @@ uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080
 ```bash
 curl -X POST http://localhost:8080/search \
   -H "Content-Type: application/json" \
-  -d '{"user_id": "3178496", "query": "organic whole wheat bread", "top_k_retrieve": 50, "top_k_final": 10}'
+  -d '{
+    "user_context": "[+7d w4h14] Organic Milk, Whole Wheat Bread.",
+    "query": "organic whole wheat bread",
+    "top_k_retrieve": 50,
+    "top_k_final": 10
+  }'
 ```
 
 Or use the smoke test script:
@@ -118,8 +121,6 @@ flowchart LR
   orchestrator --> results[RankedResults]
 ```
 
-
-
 **Flow:** 1) User → orchestrator (query + user_id/user_context). 2) Orchestrator → Instacart `POST /recommend` → top-K candidates. 3) Orchestrator → ESCI `POST /predict` with query + candidates. 4) ESCI → reranked list with scores, ESCI labels, substitute flags. 5) Orchestrator → final ranked list.
 
 ---
@@ -136,7 +137,6 @@ uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080
 
 **Environment variables:**
 
-
 | Variable            | Description                                               |
 | ------------------- | --------------------------------------------------------- |
 | `INSTACART_URL`     | Instacart API base URL (default: `http://localhost:8000`) |
@@ -144,16 +144,13 @@ uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080
 | `INSTACART_API_KEY` | Optional API key for Instacart (`X-API-Key` header)       |
 | `ESCI_API_KEY`      | Optional API key for ESCI (`X-API-Key` header)            |
 
-
 ### Endpoints
-
 
 | Method | Path      | Description                  |
 | ------ | --------- | ---------------------------- |
 | GET    | `/health` | Liveness probe               |
 | GET    | `/ready`  | Readiness probe              |
 | POST   | `/search` | Two-stage search (see below) |
-
 
 ### POST /search
 
@@ -179,7 +176,6 @@ Alternatively, provide `user_context` instead of `user_id`:
 }
 ```
 
-
 | Field            | Type    | Required | Default | Description                                   |
 | ---------------- | ------- | -------- | ------- | --------------------------------------------- |
 | `user_id`        | string  | No       | —       | User ID resolvable via Instacart eval_queries |
@@ -187,7 +183,6 @@ Alternatively, provide `user_context` instead of `user_id`:
 | `query`          | string  | Yes      | —       | Search query for ESCI reranking               |
 | `top_k_retrieve` | integer | No       | 50      | Number of candidates from Instacart (1–200)   |
 | `top_k_final`    | integer | No       | 10      | Number of final results returned (1–100)      |
-
 
 Either `user_id` or `user_context` is required.
 
@@ -210,8 +205,8 @@ Either `user_id` or `user_context` is required.
     "request_id": "...",
     "num_candidates": 50,
     "num_returned": 10,
-    "instacart_stats": { "total_latency_ms": 12.5, ... },
-    "esci_stats": { "total_latency_ms": 45.2, ... },
+    "stage_1_stats": { "total_latency_ms": 12.5, ... },
+    "stage_2_stats": { "total_latency_ms": 45.2, ... },
     "total_latency_ms": 120.5
   }
 }
@@ -251,8 +246,8 @@ The orchestrator calls two backend services. Their exact request/response schema
 
 | Field                 | Type     | Required | Default | Description                       |
 | --------------------- | -------- | -------- | ------- | --------------------------------- | ------------------------------------------- |
-| `user_context`        | string   | null     | No    | null                              | Full user context string (max 10,000 chars) |
-| `user_id`             | string   | null     | No    | null                              | User ID resolvable via eval_queries.json    |
+| `user_context`        | string   | null     | No      | null                              | Full user context string (max 10,000 chars) |
+| `user_id`             | string   | null     | No      | null                              | User ID resolvable via eval_queries.json    |
 | `top_k`               | integer  | No       | 10      | Number of recommendations (1–100) |
 | `exclude_product_ids` | string[] | No       | []      | Product IDs to exclude            |
 
@@ -270,12 +265,10 @@ Either `user_context` or `user_id` is required.
 
 **Request:**
 
-
 | Field        | Type            | Required | Description                  |
 | ------------ | --------------- | -------- | ---------------------------- |
 | `query`      | string          | Yes      | User search query            |
 | `candidates` | CandidateItem[] | Yes      | List of `{product_id, text}` |
-
 
 **Response:** `request_id`, `ranked` (array of `{product_id, score, esci_class, is_substitute}`), `stats` (`total_latency_ms`, `model_forward_time_ms`, `num_candidates`, `num_recommendations`, `device`, `top_score`, `avg_score`, `timestamp`).
 
@@ -313,6 +306,21 @@ Open [http://localhost:5173](http://localhost:5173). Configure the API URL (defa
 - **ESCI labels:** Color-coded badges (E=green, S=blue, C=orange, I=grey)
 - **Stats bar:** Latency breakdown for Instacart vs ESCI
 - **Random user/query:** Quick buttons for sample inputs
+
+---
+
+## Failure analysis: when cross-encoders fail
+
+This repo intentionally includes a **failed experiment** as a narrative device.
+
+1. **Step 1 – Two-tower retrieval (works):** The Instacart two-tower model retrieves strong candidates given a user (or user_context). This is covered in detail in the Instacart repo.
+2. **Step 2 – Add a cross-encoder reranker (natural next step):** The obvious follow-up is to add a slower but more precise cross-encoder on top of the two-tower retriever.
+3. **Step 3 – Naively reuse an Amazon-trained cross-encoder:** Here, the ESCI reranker (trained on Amazon product search) is pointed at Instacart-style product text. For queries like `"organic whole wheat bread"`, the reranker returns items that *look* relevant to humans but assigns them low scores and mostly `I` (Irrelevant) labels.
+4. **What the JSON tells you:** The pipeline is working as coded (retrieval → rerank → top_k_final), but the rerank scores and ESCI labels are poorly calibrated on Instacart data. The model is out-of-domain: it was never trained on grocery-style, field-based product strings such as `"Product: Organic Whole Wheat Bread. Aisle: bread. Department: bakery."`.
+5. **Why it failed – domain mismatch:** Cross-encoders are **highly domain- and format-sensitive**. Training on Amazon titles/descriptions with ESCI labels does not transfer cleanly to Instacart-style text and behavior. When the inputs look out-of-distribution, the model tends to default to its majority/“safe” class (often `I`) and compress scores into a narrow, low range.
+6. **How to fix it – train in-domain:** The right solution is not to hand-tune thresholds, but to **train or fine-tune a reranker on Instacart data**: Instacart queries + product text + in-domain relevance signals (clicks, purchases, human labels, etc.). The architecture here (two-tower → cross-encoder) still applies; the issue is **mismatched training distribution**, not the pipeline.
+
+This failed reranker experiment is deliberate: it mirrors real-world ML workflows, where “I tried the obvious thing from another domain and it didn’t work” is often the starting point for a more careful, in-domain solution.
 
 ---
 
@@ -387,13 +395,11 @@ docker compose up --build
 
 ### Services
 
-
-| Service       | Port | Description                      |
-| ------------- | ---- | -------------------------------- |
-| stage-1-api   | 8000 | Stage 1: Instacart retrieval    |
-| stage-2-api   | 8001 | Stage 2: ESCI reranker           |
-| orchestrator  | 8080 | Two-stage search API             |
-
+| Service      | Port | Description                  |
+| ------------ | ---- | ---------------------------- |
+| stage-1-api  | 8000 | Stage 1: Instacart retrieval |
+| stage-2-api  | 8001 | Stage 2: ESCI reranker       |
+| orchestrator | 8080 | Two-stage search API         |
 
 ---
 
@@ -409,18 +415,16 @@ docker compose up --build
 
 ## Project structure
 
-
 | Path                            | Description                                                           |
 | ------------------------------- | --------------------------------------------------------------------- |
 | **backend/**                    | FastAPI orchestrator: `main.py`, `schemas.py`                         |
 | **frontend/**                   | React/Vite web UI: query form, side-by-side and diff views, stats bar |
-| **backend/two_stage_search.py** | CLI smoke script for `POST /search` (run: `uv run two-stage-search`) |
-| **scripts/setup_deps.sh**      | Clone Instacart + ESCI repos into `deps/` for Docker                 |
-| **tests/**                     | Unit tests (e.g. `tests/test_schemas.py`)                           |
+| **backend/two_stage_search.py** | CLI smoke script for `POST /search` (run: `uv run two-stage-search`)  |
+| **scripts/setup_deps.sh**       | Clone Instacart + ESCI repos into `deps/` for Docker                  |
+| **tests/**                      | Unit tests (e.g. `tests/test_schemas.py`)                             |
 | **Dockerfile**                  | Multi-stage build for orchestrator (uv)                               |
 | **docker-compose.yml**          | Instacart, ESCI, orchestrator services                                |
 | **pyproject.toml**, **uv.lock** | Project and dependency lock (uv)                                      |
-
 
 ---
 

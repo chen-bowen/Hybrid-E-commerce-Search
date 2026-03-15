@@ -94,17 +94,14 @@ async def two_stage_search(req: TwoStageRequest) -> TwoStageResponse:
                     "request_id": request_id,
                     "num_candidates": 0,
                     "num_returned": 0,
-                    "instacart_stats": instacart_resp.get("stats"),
-                    "esci_stats": None,
+                    "stage_1_stats": instacart_resp.get("stats"),
+                    "stage_2_stats": None,
                     "total_latency_ms": (time.perf_counter() - start_time) * 1000,
                 },
             )
 
         # Build candidates for ESCI
-        candidates = [
-            {"product_id": r["product_id"], "text": r.get("product_text") or ""}
-            for r in recs
-        ]
+        candidates = [{"product_id": r["product_id"], "text": r.get("product_text") or ""} for r in recs]
         rec_map = {r["product_id"]: r for r in recs}
 
         # Stage 2: ESCI reranking
@@ -114,6 +111,9 @@ async def two_stage_search(req: TwoStageRequest) -> TwoStageResponse:
         }
         esci_resp = await _call_esci(esci_payload)
         ranked = esci_resp.get("ranked", [])
+
+        # Sort by rerank score descending so final order is by relevance, not retrieval order
+        ranked = sorted(ranked, key=lambda r: r.get("score", float("-inf")), reverse=True)
 
         # Build retrieval rank map (1-based index in Instacart order)
         retrieval_rank_map = {r["product_id"]: i + 1 for i, r in enumerate(recs)}
@@ -141,8 +141,8 @@ async def two_stage_search(req: TwoStageRequest) -> TwoStageResponse:
             "request_id": request_id,
             "num_candidates": len(candidates),
             "num_returned": len(items),
-            "instacart_stats": instacart_resp.get("stats"),
-            "esci_stats": esci_resp.get("stats"),
+            "stage_1_stats": instacart_resp.get("stats"),
+            "stage_2_stats": esci_resp.get("stats"),
             "total_latency_ms": round(total_ms, 2),
         }
 

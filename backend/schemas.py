@@ -80,5 +80,5 @@ class TwoStageResponse(BaseModel):
     )
     stats: dict[str, Any] = Field(
         default_factory=dict,
-        description="Aggregated stats: num_candidates, num_returned, instacart_stats, esci_stats, etc.",
+        description="Aggregated stats: num_candidates, num_returned, stage_1_stats, stage_2_stats, etc.",
     )
