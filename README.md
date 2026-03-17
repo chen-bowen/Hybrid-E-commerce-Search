@@ -124,8 +124,8 @@ flowchart LR
 
   subgraph Stage1["Stage 1: Instacart Retrieval"]
     s1api[Instacart API /recommend]
-    s1model[Two-tower model (HF: instacart-two-tower-sbert)]
-    s1corpus[Eval corpus (HF: instacart-eval-corpus)]
+    s1model[Two-tower model HF instacart-two-tower-sbert]
+    s1corpus[Eval corpus HF instacart-eval-corpus]
   end
 
   subgraph Stage2["Stage 2: ESCI Reranker"]
@@ -136,7 +136,7 @@ flowchart LR
   user --> ui --> orchestrator
   orchestrator -->|POST /recommend| s1api
   s1api -->|top-K candidates| orchestrator
-  orchestrator -->|POST /predict (query + candidates)| s2api
+  orchestrator -->|POST /predict + candidates| s2api
   s2api -->|reranked list + ESCI labels| orchestrator
   orchestrator -->|final ranked results| ui
 
