@@ -122,15 +122,15 @@ flowchart LR
     orchestrator[Two-Stage Orchestrator API]
   end
 
+  subgraph Stage2["Stage 2: ESCI Reranker"]
+    s2api[ESCI API /predict]
+    s2model[Amazon ESCI cross-encoder]
+  end
+
   subgraph Stage1["Stage 1: Instacart Retrieval"]
     s1api[Instacart API /recommend]
     s1model[Two-tower model HF instacart-two-tower-sbert]
     s1corpus[Eval corpus HF instacart-eval-corpus]
-  end
-
-  subgraph Stage2["Stage 2: ESCI Reranker"]
-    s2api[ESCI API /predict]
-    s2model[Amazon ESCI cross-encoder]
   end
 
   user --> ui --> orchestrator
@@ -339,7 +339,7 @@ This repo intentionally includes a **failed experiment** as a narrative device.
 
 1. **Step 1 – Two-tower retrieval (works):** The Instacart two-tower model retrieves strong candidates given a user (or user_context). This is covered in detail in the Instacart repo.
 2. **Step 2 – Add a cross-encoder reranker (natural next step):** The obvious follow-up is to add a slower but more precise cross-encoder on top of the two-tower retriever.
-3. **Step 3 – Naively reuse an Amazon-trained cross-encoder:** Here, the ESCI reranker (trained on Amazon product search) is pointed at Instacart-style product text. For queries like `"organic whole wheat bread"`, the reranker returns items that *look* relevant to humans but assigns them low scores and mostly `I` (Irrelevant) labels.
+3. **Step 3 – Naively reuse an Amazon-trained cross-encoder:** Here, the ESCI reranker (trained on Amazon product search) is pointed at Instacart-style product text. For queries like `"organic whole wheat bread"`, the reranker returns items that _look_ relevant to humans but assigns them low scores and mostly `I` (Irrelevant) labels.
 4. **What the JSON tells you:** The pipeline is working as coded (retrieval → rerank → top_k_final), but the rerank scores and ESCI labels are poorly calibrated on Instacart data. The model is out-of-domain: it was never trained on grocery-style, field-based product strings such as `"Product: Organic Whole Wheat Bread. Aisle: bread. Department: bakery."`.
 5. **Why it failed – domain mismatch:** Cross-encoders are **highly domain- and format-sensitive**. Training on Amazon titles/descriptions with ESCI labels does not transfer cleanly to Instacart-style text and behavior. When the inputs look out-of-distribution, the model tends to default to its majority/“safe” class (often `I`) and compress scores into a narrow, low range.
 6. **How to fix it – train in-domain:** The right solution is not to hand-tune thresholds, but to **train or fine-tune a reranker on Instacart data**: Instacart queries + product text + in-domain relevance signals (clicks, purchases, human labels, etc.). The architecture here (two-tower → cross-encoder) still applies; the issue is **mismatched training distribution**, not the pipeline.
