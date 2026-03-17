@@ -113,12 +113,36 @@ uv run two-stage-search --user-id 3178496 --query "organic whole wheat bread"
 
 ```mermaid
 flowchart LR
-  user[User] --> orchestrator[OrchestratorAPI]
-  orchestrator --> instacartAPI[InstacartAPI]
-  instacartAPI --> orchestrator
-  orchestrator --> esciAPI[ESCIRerankerAPI]
-  esciAPI --> orchestrator
-  orchestrator --> results[RankedResults]
+  subgraph Client
+    user[User]
+    ui[Web UI / CLI]
+  end
+
+  subgraph Orchestrator
+    orchestrator[Two-Stage Orchestrator API]
+  end
+
+  subgraph Stage1["Stage 1: Instacart Retrieval"]
+    s1api[Instacart API /recommend]
+    s1model[Two-tower model (HF: instacart-two-tower-sbert)]
+    s1corpus[Eval corpus (HF: instacart-eval-corpus)]
+  end
+
+  subgraph Stage2["Stage 2: ESCI Reranker"]
+    s2api[ESCI API /predict]
+    s2model[Amazon ESCI cross-encoder]
+  end
+
+  user --> ui --> orchestrator
+  orchestrator -->|POST /recommend| s1api
+  s1api -->|top-K candidates| orchestrator
+  orchestrator -->|POST /predict (query + candidates)| s2api
+  s2api -->|reranked list + ESCI labels| orchestrator
+  orchestrator -->|final ranked results| ui
+
+  s1api --- s1model
+  s1api --- s1corpus
+  s2api --- s2model
 ```
 
 **Flow:** 1) User → orchestrator (query + user_id/user_context). 2) Orchestrator → Instacart `POST /recommend` → top-K candidates. 3) Orchestrator → ESCI `POST /predict` with query + candidates. 4) ESCI → reranked list with scores, ESCI labels, substitute flags. 5) Orchestrator → final ranked list.
