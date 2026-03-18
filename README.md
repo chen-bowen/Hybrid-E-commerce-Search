@@ -269,12 +269,14 @@ The orchestrator calls two backend services. Their exact request/response schema
 
 **Request:**
 
-| Field                 | Type     | Required | Default | Description                       |
-| --------------------- | -------- | -------- | ------- | --------------------------------- | ------------------------------------------- |
-| `user_context`        | string   | null     | No      | null                              | Full user context string (max 10,000 chars) |
-| `user_id`             | string   | null     | No      | null                              | User ID resolvable via eval_queries.json    |
-| `top_k`               | integer  | No       | 10      | Number of recommendations (1–100) |
-| `exclude_product_ids` | string[] | No       | []      | Product IDs to exclude            |
+Request:
+
+| Field              | Type     | Required | Default | Description                               |
+| ------------------ | -------- | -------- | ------- | ----------------------------------------- |
+| user_context       | string   | No       | null    | Full user context string (max 10,000 chars) |
+| user_id            | string   | No       | null    | User ID resolvable via eval_queries.json  |
+| top_k              | integer  | No       | 10      | Number of recommendations (1–100)         |
+| exclude_product_ids| string[] | No       | []      | Product IDs to exclude                    |
 
 Either `user_context` or `user_id` is required.
 
