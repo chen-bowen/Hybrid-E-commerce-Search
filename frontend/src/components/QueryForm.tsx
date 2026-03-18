@@ -26,19 +26,27 @@ export function QueryForm({
   apiUrl,
   onApiUrlChange,
 }: QueryFormProps) {
-  const [userId, setUserId] = useState("3178496");
+  const [userId, setUserId] = useState("");
   const [query, setQuery] = useState("organic whole wheat bread");
   const [topKRetrieve, setTopKRetrieve] = useState(50);
   const [topKFinal, setTopKFinal] = useState(10);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
-      user_id: userId,
-      query,
-      top_k_retrieve: topKRetrieve,
-      top_k_final: topKFinal,
-    });
+    onSubmit(
+      userId.trim()
+        ? {
+            user_id: userId.trim(),
+            query,
+            top_k_retrieve: topKRetrieve,
+            top_k_final: topKFinal,
+          }
+        : {
+            query,
+            top_k_retrieve: topKRetrieve,
+            top_k_final: topKFinal,
+          },
+    );
   };
 
   const pickRandomUser = () => {
@@ -61,13 +69,13 @@ export function QueryForm({
         />
       </label>
       <label>
-        User ID
+        User ID (optional)
         <div className="input-row">
           <input
             type="text"
             value={userId}
             onChange={(e) => setUserId(e.target.value)}
-            placeholder="3178496"
+            placeholder="Leave blank to use a sample context"
           />
           <button type="button" onClick={pickRandomUser} title="Random user">
             Random

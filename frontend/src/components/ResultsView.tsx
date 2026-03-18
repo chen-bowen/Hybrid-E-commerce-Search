@@ -48,7 +48,13 @@ export function ResultsView({ items, viewMode, loading }: ResultsViewProps) {
         <h3>Stage 1 – Instacart retrieval</h3>
         <div className="results-list">
           {retrievalOrdered.map((item, i) => (
-            <ResultCard key={item.product_id} item={item} rank={i + 1} />
+            <ResultCard
+              key={item.product_id}
+              item={item}
+              rank={i + 1}
+              showEsci={false}
+              showRerankScore={false}
+            />
           ))}
         </div>
       </div>

@@ -19,6 +19,8 @@ interface ResultCardProps {
   rank: number;
   retrievalRank?: number;
   showMovement?: boolean;
+  showEsci?: boolean;
+  showRerankScore?: boolean;
 }
 
 export function ResultCard({
@@ -26,6 +28,8 @@ export function ResultCard({
   rank,
   retrievalRank,
   showMovement,
+  showEsci = true,
+  showRerankScore = true,
 }: ResultCardProps) {
   const moved = retrievalRank != null && retrievalRank !== rank;
   const movedUp = moved && retrievalRank > rank;
@@ -39,22 +43,24 @@ export function ResultCard({
             was #{retrievalRank}
           </span>
         )}
-        <span
-          className="esci-badge"
-          style={{
-            backgroundColor: item.esci_label
-              ? ESCI_COLORS[item.esci_label] ?? "var(--e-irrelevant)"
-              : "transparent",
-          }}
-          title={
-            item.esci_label
-              ? ESCI_LABELS[item.esci_label] ?? item.esci_label
-              : undefined
-          }
-        >
-          {item.esci_label ?? "-"}
-        </span>
-        {item.is_substitute && (
+        {showEsci && (
+          <span
+            className="esci-badge"
+            style={{
+              backgroundColor: item.esci_label
+                ? ESCI_COLORS[item.esci_label] ?? "var(--e-irrelevant)"
+                : "transparent",
+            }}
+            title={
+              item.esci_label
+                ? ESCI_LABELS[item.esci_label] ?? item.esci_label
+                : undefined
+            }
+          >
+            {item.esci_label ?? "-"}
+          </span>
+        )}
+        {showEsci && item.is_substitute && (
           <span className="substitute-tag">Sub</span>
         )}
       </div>
@@ -65,7 +71,11 @@ export function ResultCard({
         </div>
         <div className="scores">
           <span title="Retrieval score">rec: {item.rec_score.toFixed(4)}</span>
-          <span title="Rerank score">rerank: {item.rerank_score.toFixed(4)}</span>
+          {showRerankScore && (
+            <span title="Rerank score">
+              rerank: {item.rerank_score.toFixed(4)}
+            </span>
+          )}
         </div>
       </div>
     </div>

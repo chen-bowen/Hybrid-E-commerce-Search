@@ -87,10 +87,10 @@ export default function App() {
 
         {!data && !loading && !error && (
           <div className="empty-state">
-            <p>Enter a query and user ID, then click Search.</p>
+            <p>Enter a query (User ID is optional), then click Search.</p>
             <p className="muted">
-              Instacart and ESCI are trained on different datasets; this UI is for
-              architectural exploration.
+              If you leave User ID blank, the backend will use a sample Instacart
+              context so you can explore the two-stage pipeline quickly.
             </p>
           </div>
         )}

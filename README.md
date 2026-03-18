@@ -364,10 +364,10 @@ This clones [instacart_next_order_recommendation](https://github.com/chen-bowen/
 
 You can run Stage 1 in two ways: **HF-only (recommended for Docker)** or **local files**.
 
-1. **Corpus:**
-   - **HF-only (recommended):** Ensure the public dataset [chenbowen184/instacart-eval-corpus](https://huggingface.co/datasets/chenbowen184/instacart-eval-corpus) exists and contains `eval_corpus.json`. If it doesn't exist, run `uv run python -m src.data.prepare_instacart_sbert` to generate the corpus locally, then `uv run python scripts/upload_corpus_to_hf.py` from `deps/stage-1/`.
+1. **Product corpus (candidate texts):**
+   - **HF-only (recommended):** Ensure the public dataset [chenbowen184/instacart-eval-corpus](https://huggingface.co/datasets/chenbowen184/instacart-eval-corpus) exists and contains `eval_corpus.json` (the **product_eval_corpus**: a mapping of `product_id → product_text`). If it doesn't exist, run `uv run python -m src.data.prepare_instacart_sbert` to generate the corpus locally, then `uv run python scripts/upload_corpus_to_hf.py` from `deps/stage-1/`.
    - **Local:** Download the [Instacart dataset](https://www.kaggle.com/c/instacart-market-basket-analysis/data) into `data/`, then `uv run python -m src.data.prepare_instacart_sbert` → creates `processed/p5_mp20_ef0.1/eval_corpus.json`. Mount this into Docker via `INSTACART_PROCESSED` if you prefer not to use HF.
-2. **Model:**
+2. **Model (retriever):**
    - **HF-only (recommended):** Upload the trained two-tower model to a Hugging Face repo, e.g. [`chenbowen184/instacart-two-tower-sbert`](https://huggingface.co/chenbowen184/instacart-two-tower-sbert). The Docker compose file is configured to use this HF model ID as `MODEL_DIR`.
    - **Local:** Run training in `deps/stage-1/` with `uv run python -m src.training` → creates `models/two_tower_sbert/final/`, and set `MODEL_DIR=/app/models/two_tower_sbert/final` with a corresponding volume mount.
 
@@ -377,8 +377,8 @@ You can run Stage 1 in two ways: **HF-only (recommended for Docker)** or **local
 
 By default, `docker-compose.yml` is wired to use **Hugging Face-only** for Stage 1:
 
-- `MODEL_DIR=chenbowen184/instacart-two-tower-sbert`
-- `CORPUS_HF_REPO=chenbowen184/instacart-eval-corpus`
+- `MODEL_DIR=chenbowen184/instacart-two-tower-sbert` (retriever model)
+- `CORPUS_HF_REPO=chenbowen184/instacart-eval-corpus` (product_eval_corpus repo)
 - `CORPUS_HF_REPO_TYPE=dataset`
 
 For public HF repos (no auth):

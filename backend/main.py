@@ -14,6 +14,7 @@ from uuid import uuid4
 
 import httpx
 from fastapi import FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend.schemas import FinalItem, TwoStageRequest, TwoStageResponse
 
@@ -25,6 +26,15 @@ INSTACART_API_KEY = os.getenv("INSTACART_API_KEY", "")
 ESCI_API_KEY = os.getenv("ESCI_API_KEY", "")
 
 app = FastAPI(title="Two-Stage Search Orchestrator")
+
+# Allow browser clients (e.g. Vite dev server) to call the API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def _build_headers(api_key: str) -> dict[str, str]:
@@ -65,11 +75,10 @@ async def two_stage_search(req: TwoStageRequest) -> TwoStageResponse:
     Two-stage search: Instacart retrieval (Stage 1) and ESCI reranking (Stage 2).\n\n
     Requires: user_id or user_context, plus query.
     """
+    # If neither user_id nor user_context is provided (e.g. empty UI field),
+    # fall back to a simple synthetic context so the demo UI "just works".
     if not req.user_id and not req.user_context:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Either user_id or user_context is required.",
-        )
+        req.user_context = "[+7d w4h14] Organic Milk, Whole Wheat Bread."
 
     start_time = time.perf_counter()
     request_id = str(uuid4())
