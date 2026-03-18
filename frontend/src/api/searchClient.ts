@@ -34,6 +34,17 @@ export interface SearchResponse {
   };
 }
 
+export interface Stage1RecommendItem {
+  product_id: string;
+  score: number;
+  product_text?: string;
+}
+
+export interface Stage1RecommendResponse {
+  recommendations: Stage1RecommendItem[];
+  stats?: Record<string, unknown>;
+}
+
 export async function search(
   request: SearchRequest,
   baseUrl: string = DEFAULT_BASE_URL,
@@ -47,6 +58,23 @@ export async function search(
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Search failed: ${res.status} - ${text}`);
+  }
+  return res.json();
+}
+
+export async function stage1Recommend(
+  request: SearchRequest,
+  baseUrl: string = DEFAULT_BASE_URL,
+): Promise<Stage1RecommendResponse> {
+  const url = `${baseUrl.replace(/\/$/, "")}/stage1/recommend`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Stage 1 failed: ${res.status} - ${text}`);
   }
   return res.json();
 }

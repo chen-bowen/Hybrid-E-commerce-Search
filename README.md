@@ -151,7 +151,7 @@ flowchart LR
 
 ## API
 
-The orchestrator exposes a single search endpoint.
+The orchestrator exposes the two-stage search endpoint and a Stage 1 proxy.
 
 ### Run locally
 
@@ -170,11 +170,12 @@ uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080
 
 ### Endpoints
 
-| Method | Path      | Description                  |
-| ------ | --------- | ---------------------------- |
-| GET    | `/health` | Liveness probe               |
-| GET    | `/ready`  | Readiness probe              |
-| POST   | `/search` | Two-stage search (see below) |
+| Method | Path                 | Description                                        |
+| ------ | -------------------- | -------------------------------------------------- |
+| GET    | `/health`            | Liveness probe                                     |
+| GET    | `/ready`             | Readiness probe                                    |
+| POST   | `/search`            | Two-stage search (Stage 1 + Stage 2, see below)    |
+| POST   | `/stage1/recommend`  | Stage 1 only: proxy to Instacart `POST /recommend` |
 
 ### POST /search
 

@@ -4,15 +4,24 @@ import { ResultCard } from "./ResultCard";
 type ViewMode = "side-by-side" | "diff";
 
 interface ResultsViewProps {
-  items: FinalItem[];
+  stage1Items: FinalItem[];
+  finalItems: FinalItem[];
   viewMode: ViewMode;
   loading: boolean;
 }
 
-export function ResultsView({ items, viewMode, loading }: ResultsViewProps) {
-  // For side-by-side: left = retrieval order (by rec_score), right = rerank order
-  const retrievalOrdered = [...items].sort((a, b) => b.rec_score - a.rec_score);
-  const rerankOrdered = items;
+export function ResultsView({
+  stage1Items,
+  finalItems,
+  viewMode,
+  loading,
+}: ResultsViewProps) {
+  // For side-by-side: left = Stage 1 retrieval order (by rec_score),
+  // right = Stage 2 reranked order from orchestrator.
+  const retrievalOrdered = [...stage1Items].sort(
+    (a, b) => b.rec_score - a.rec_score,
+  );
+  const rerankOrdered = finalItems;
 
   if (loading) {
     return (

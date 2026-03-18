@@ -69,6 +69,30 @@ async def _call_esci(payload: dict) -> dict:
         return resp.json()
 
 
+@app.post("/stage1/recommend")
+async def stage1_recommend(req: TwoStageRequest) -> dict:
+    """
+    Proxy endpoint that exposes raw Stage 1 retrieval results.
+
+    This calls Instacart POST /recommend and returns its JSON response directly,
+    without running Stage 2 reranking.
+    """
+    # Apply the same user_id / user_context fallback behavior as /search
+    if not req.user_id and not req.user_context:
+        req.user_context = "[+7d w4h14] Organic Milk, Whole Wheat Bread."
+
+    instacart_payload: dict = {
+        "top_k": req.top_k_retrieve,
+    }
+    if req.user_id:
+        instacart_payload["user_id"] = req.user_id
+    else:
+        instacart_payload["user_context"] = req.user_context
+
+    instacart_resp = await _call_instacart(instacart_payload)
+    return instacart_resp
+
+
 @app.post("/search", response_model=TwoStageResponse)
 async def two_stage_search(req: TwoStageRequest) -> TwoStageResponse:
     """

@@ -3,14 +3,23 @@ import { QueryForm } from "./components/QueryForm";
 import "./App.css";
 import { StatsBar } from "./components/StatsBar";
 import { ResultsView } from "./components/ResultsView";
-import { search, type SearchResponse } from "./api/searchClient";
+import {
+  search,
+  stage1Recommend,
+  type SearchResponse,
+  type Stage1RecommendResponse,
+  type FinalItem,
+} from "./api/searchClient";
 
 type ViewMode = "side-by-side" | "diff";
 
 export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<SearchResponse | null>(null);
+  const [data, setData] = useState<{
+    stage1: Stage1RecommendResponse;
+    final: SearchResponse;
+  } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("side-by-side");
   const [apiUrl, setApiUrl] = useState("http://localhost:8080");
 
@@ -24,8 +33,11 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const res = await search(params, apiUrl);
-      setData(res);
+      const [stage1, final] = await Promise.all([
+        stage1Recommend(params, apiUrl),
+        search(params, apiUrl),
+      ]);
+      setData({ stage1, final });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -76,9 +88,19 @@ export default function App() {
 
         {data && (
           <>
-            <StatsBar stats={data.stats} />
+            <StatsBar stats={data.final.stats} />
             <ResultsView
-              items={data.items}
+              stage1Items={data.stage1.recommendations.map<FinalItem>(
+                (r, idx) => ({
+                  product_id: r.product_id,
+                  rec_score: r.score,
+                  // Stage 1 has no rerank score; use 0 placeholder
+                  rerank_score: 0,
+                  product_text: r.product_text,
+                  retrieval_rank: idx + 1,
+                }),
+              )}
+              finalItems={data.final.items}
               viewMode={viewMode}
               loading={loading}
             />
