@@ -17,6 +17,8 @@ Related repos: [instacart_next_order_recommendation](https://github.com/chen-bow
 docker compose up --build
 ```
 
+Open the app at `http://localhost:7860`. The gateway routes UI traffic to the frontend and `/api/*` to the orchestrator.
+
 **Local dev:** `uv sync`, then start Stage 1 (Instacart, 8000) and Stage 2 (ESCI, 8001) from their repos, then `uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080`. See [Pipeline](#pipeline) for details.
 
 **What we're building:** Two-stage search (**Stage 1** retrieval → **Stage 2** reranking). Input: `user_id` or `user_context` + `query`. Output: ranked products with `rec_score`, `rerank_score`, `esci_label` (E/S/C/I). This repo orchestrates pre-trained services; it does not train models.
@@ -36,7 +38,7 @@ docker compose up --build
 ## Setup
 
 1. **Clone this repo** and enter the project root.
-2. **For Docker:** Run `./scripts/setup_deps.sh` to clone the backend repos into `deps/`.
+2. **For Docker:** Follow [Docker](#docker) for the canonical setup and run commands.
 3. **For local dev:** Install orchestrator deps with `uv sync`. Ensure Instacart and ESCI services are available (trained models and data in those repos). Run:
    - Instacart: `uv run uvicorn src.api.main:app --port 8000` (from the Instacart repo).
    - ESCI: `uv run uvicorn src.api.main:app --port 8001` (from the ESCI repo; ESCI runs on 8000 internally, map 8001:8000 if needed).
@@ -52,7 +54,7 @@ docker compose up --build
 | **Orchestrator** | `uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080`                    | Serve the two-stage search API                         |
 | **Smoke script** | `uv run two-stage-search --user-id 3178496 --query "organic whole wheat bread"` | CLI smoke script for the search endpoint               |
 | **Web UI**       | `cd frontend && npm install && npm run dev`                                     | Interactive exploration; side-by-side and diff views   |
-| **Docker**       | `./scripts/setup_deps.sh` then `docker compose up --build`                      | Run all three services (Instacart, ESCI, orchestrator) |
+| **Docker**       | `./scripts/setup_deps.sh` then `docker compose up --build`                      | Run full stack (Stage 1, Stage 2, orchestrator, UI, gateway) |
 
 **Typical workflow:** 1) Start Instacart and ESCI services → 2) Start orchestrator → 3) Use UI or smoke script to explore.
 
@@ -353,15 +355,22 @@ This failed reranker experiment is deliberate: it mirrors real-world ML workflow
 
 ## Docker
 
-This repo is a **meta-repo**: it orchestrates the pipeline and pulls in the backend repos on demand.
+This repo supports two Docker deployment modes:
 
-### One-time setup
+1. **Local multi-container (`docker-compose.yml`)**: Stage 1 API + Stage 2 API + orchestrator + frontend + gateway.
+2. **Single-container runtime (`Dockerfile`)**: Hugging Face Docker Space-friendly image that runs nginx, Stage 1 API, Stage 2 API, orchestrator, and static frontend in one container.
+
+`docker-compose.yml` and the root `Dockerfile` are intentionally different and optimized for these two environments.
+
+### A) Local multi-container (docker compose)
+
+#### One-time setup
 
 ```bash
 ./scripts/setup_deps.sh
 ```
 
-This clones [instacart_next_order_recommendation](https://github.com/chen-bowen/instacart_next_order_recommendation) and [Amazon_Multitask_Search_Ranking](https://github.com/chen-bowen/Amazon_Multitask_Search_Ranking) into `deps/stage-1` and `deps/stage-2`.
+This clones [instacart_next_order_recommendation](https://github.com/chen-bowen/instacart_next_order_recommendation) and [Amazon_Multitask_Search_Ranking](https://github.com/chen-bowen/Amazon_Multitask_Search_Ranking) into `deps/stage-1` and `deps/stage-2` for compose builds.
 
 **Stage 1 (Instacart) prerequisites** (in `deps/stage-1/`):
 
@@ -376,21 +385,15 @@ You can run Stage 1 in two ways: **HF-only (recommended for Docker)** or **local
 
 **Stage 2 (ESCI) prerequisites** (in `deps/stage-2/`): trained checkpoint at `checkpoints/multi_task_reranker/` (see that repo's README).
 
-### Build and run
+#### Build and run
 
 By default, `docker-compose.yml` is wired to use **Hugging Face-only** for Stage 1:
 
 - `MODEL_DIR=chenbowen184/instacart-two-tower-sbert` (retriever model)
-- `CORPUS_HF_REPO=chenbowen184/instacart-eval-corpus` (product_eval_corpus repo)
+- `CORPUS_HF_REPO=chenbowen184/product-artifacts` (dataset repo containing `eval_corpus.json`)
 - `CORPUS_HF_REPO_TYPE=dataset`
 
-For public HF repos (no auth):
-
-```bash
-HF_TOKEN="" docker compose up --build
-```
-
-For private HF model/corpus repos, pass a valid token:
+Run with optional Hugging Face token (required only for private repos):
 
 ```bash
 HF_TOKEN=your_hf_token docker compose up --build
@@ -406,7 +409,7 @@ CORPUS_HF_REPO="" \
 docker compose up --build
 ```
 
-### Override for existing sibling repos
+#### Override for existing sibling repos
 
 If you already have the backends cloned elsewhere:
 
@@ -420,13 +423,44 @@ ESCI_CHECKPOINTS=../Amazon_Search_Retrieval/checkpoints/multi_task_reranker \
 docker compose up --build
 ```
 
-### Services
+#### Services (compose)
 
 | Service      | Port | Description                  |
 | ------------ | ---- | ---------------------------- |
 | stage-1-api  | 8000 | Stage 1: Instacart retrieval |
 | stage-2-api  | 8001 | Stage 2: ESCI reranker       |
 | orchestrator | 8080 | Two-stage search API         |
+| frontend     | 80 (internal) | React app served behind gateway |
+| gateway      | 7860 | Public entrypoint (UI + `/api/*`) |
+
+Key routes when compose is running:
+
+- `http://localhost:7860/` -> frontend UI
+- `http://localhost:7860/api/search` -> orchestrator `POST /search`
+- `http://localhost:8080/docs` -> orchestrator docs (direct)
+
+### B) Single-container image (Hugging Face Docker Space)
+
+The root `Dockerfile` provides two targets:
+
+- `backend-runtime`: backend-only runtime for local compose orchestrator container.
+- default final stage (`runtime`): Space-friendly runtime that serves everything behind nginx on port `7860`.
+
+The final `runtime` stage:
+
+- builds frontend assets (`frontend/`) and serves them as static files,
+- starts Stage 1 and Stage 2 APIs from cloned deps repos in isolated venvs,
+- starts the orchestrator on `8080`,
+- runs nginx gateway on `7860`.
+
+Build and run the single-container image locally:
+
+```bash
+docker build -t hybrid-search-space .
+docker run --rm -p 7860:7860 -e HF_TOKEN=your_hf_token hybrid-search-space
+```
+
+If your Hugging Face repos are public, `HF_TOKEN` can be omitted.
 
 ---
 
@@ -449,8 +483,8 @@ docker compose up --build
 | **backend/two_stage_search.py** | CLI smoke script for `POST /search` (run: `uv run two-stage-search`)  |
 | **scripts/setup_deps.sh**       | Clone Instacart + ESCI repos into `deps/` for Docker                  |
 | **tests/**                      | Unit tests (e.g. `tests/test_schemas.py`)                             |
-| **Dockerfile**                  | Multi-stage build for orchestrator (uv)                               |
-| **docker-compose.yml**          | Instacart, ESCI, orchestrator services                                |
+| **Dockerfile**                  | Multi-stage image: compose backend target + HF Space single-container runtime |
+| **docker-compose.yml**          | Local multi-container stack: Stage 1, Stage 2, orchestrator, frontend, gateway |
 | **pyproject.toml**, **uv.lock** | Project and dependency lock (uv)                                      |
 
 ---
