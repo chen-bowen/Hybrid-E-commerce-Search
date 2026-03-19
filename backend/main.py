@@ -15,6 +15,7 @@ from uuid import uuid4
 import httpx
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 
 from backend.schemas import FinalItem, TwoStageRequest, TwoStageResponse
 
@@ -209,6 +210,27 @@ async def two_stage_search(req: TwoStageRequest) -> TwoStageResponse:
 async def health() -> dict:
     """Liveness probe."""
     return {"status": "ok"}
+
+
+@app.get("/", include_in_schema=False)
+async def home() -> HTMLResponse:
+    """Simple landing page so the Space has a frontend entrypoint."""
+    return HTMLResponse(
+        """
+        <html>
+          <head><title>Hybrid E-commerce Search</title></head>
+          <body>
+            <h2>Hybrid E-commerce Search</h2>
+            <p>This Space runs the backend API.</p>
+            <ul>
+              <li><a href="/docs">API docs</a> (Swagger)</li>
+              <li><a href="/redoc">ReDoc</a></li>
+              <li><a href="/health">Health</a></li>
+            </ul>
+          </body>
+        </html>
+        """.strip()
+    )
 
 
 @app.get("/ready")

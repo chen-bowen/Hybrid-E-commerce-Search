@@ -16,15 +16,11 @@ interface QueryFormProps {
     top_k_final: number;
   }) => void;
   loading: boolean;
-  apiUrl: string;
-  onApiUrlChange: (url: string) => void;
 }
 
 export function QueryForm({
   onSubmit,
   loading,
-  apiUrl,
-  onApiUrlChange,
 }: QueryFormProps) {
   const [userId, setUserId] = useState("");
   const [query, setQuery] = useState("organic whole wheat bread");
@@ -59,15 +55,6 @@ export function QueryForm({
 
   return (
     <form className="query-form" onSubmit={handleSubmit}>
-      <label>
-        API URL
-        <input
-          type="text"
-          value={apiUrl}
-          onChange={(e) => onApiUrlChange(e.target.value)}
-          placeholder="http://localhost:8080"
-        />
-      </label>
       <label>
         User ID (optional)
         <div className="input-row">

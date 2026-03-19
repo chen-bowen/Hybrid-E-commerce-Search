@@ -15,7 +15,7 @@ services:
     environment:
       MODEL_DIR: chenbowen184/instacart-two-tower-sbert
       CORPUS_PATH: /app/processed/p5_mp20_ef0.1/eval_corpus.json
-      CORPUS_HF_REPO: chenbowen184/instacart-eval-corpus
+      CORPUS_HF_REPO: chenbowen184/product-artifacts
       CORPUS_HF_REPO_TYPE: dataset
       INFERENCE_DEVICE: cpu
       HF_TOKEN: ${HF_TOKEN:-}
@@ -67,6 +67,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: backend-runtime
     container_name: two-stage-orchestrator
     environment:
       INSTACART_URL: http://stage-1-api:8000

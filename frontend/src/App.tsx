@@ -21,7 +21,9 @@ export default function App() {
     final: SearchResponse;
   } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("side-by-side");
-  const [apiUrl, setApiUrl] = useState("http://localhost:8080");
+  // In production behind Nginx, `/api` is proxied to the FastAPI backend.
+  // In local dev, Vite's proxy maps `/api` -> `http://localhost:8080`.
+  const [apiUrl] = useState("/api");
 
   const handleSearch = async (params: {
     user_id?: string;
@@ -58,8 +60,6 @@ export default function App() {
         <QueryForm
           onSubmit={handleSearch}
           loading={loading}
-          apiUrl={apiUrl}
-          onApiUrlChange={setApiUrl}
         />
       </aside>
 
