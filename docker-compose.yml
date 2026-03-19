@@ -13,13 +13,11 @@ services:
       dockerfile: Dockerfile
     container_name: stage-1-api
     environment:
-      # Use Hugging Face model + corpus by default (no local volumes required)
       MODEL_DIR: chenbowen184/instacart-two-tower-sbert
       CORPUS_PATH: /app/processed/p5_mp20_ef0.1/eval_corpus.json
       CORPUS_HF_REPO: chenbowen184/instacart-eval-corpus
       CORPUS_HF_REPO_TYPE: dataset
       INFERENCE_DEVICE: cpu
-      # For private HF corpus/model repos: set HF_TOKEN; leave empty for public
       HF_TOKEN: ${HF_TOKEN:-}
     volumes:
       - ${INSTACART_MODELS:-./deps/stage-1/models}:/app/models
@@ -80,3 +78,35 @@ services:
         condition: service_healthy
     ports:
       - "8080:8080"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+
+  gateway:
+    image: nginx:alpine
+    container_name: gateway
+    ports:
+      - "7860:7860"
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - orchestrator
