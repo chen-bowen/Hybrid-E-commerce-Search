@@ -318,6 +318,9 @@ Either `user_context` or `user_id` is required.
 
 A React/Vite web UI is available in `frontend/` for interactive exploration.
 
+<img width="2400" height="1324" alt="image" src="https://github.com/user-attachments/assets/931c6daf-ae9a-4f25-87b7-563df45c90e1" />
+
+
 ### Run
 
 ```bash
