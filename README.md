@@ -1,6 +1,6 @@
 # Hybrid E-Commerce Search
 
-This project wires two existing systems into a **two-stage search pipeline**: a two-tower Instacart retriever (Stage 1) and an Amazon ESCI cross-encoder reranker (Stage 2). An orchestrator service calls both backends, joins results, and exposes a single `POST /search` endpoint. A React web UI visualizes retrieval vs reranked results side-by-side, with ESCI labels and rank movement. The pipeline illustrates the standard architecture used in production search (fast recall → precise rerank), even though the two models are trained on different datasets (Instacart grocery co-purchase vs Amazon product search).
+This project wires two existing systems into a **two-stage search pipeline**: **Stage 1** (Instacart retrieval, two-tower retriever) and **Stage 2** (ESCI reranker, Amazon cross-encoder). An orchestrator service calls both backends, joins results, and exposes a single `POST /search` endpoint. A React web UI visualizes retrieval vs reranked results side-by-side, with ESCI labels and rank movement. The pipeline illustrates the standard architecture used in production search (fast recall → precise rerank), even though the two models are trained on different datasets (Instacart grocery co-purchase vs Amazon product search).
 
 Related repos: [instacart_next_order_recommendation](https://github.com/chen-bowen/instacart_next_order_recommendation), [Amazon_Multitask_Search_Ranking](https://github.com/chen-bowen/Amazon_Multitask_Search_Ranking).
 
@@ -13,13 +13,13 @@ Related repos: [instacart_next_order_recommendation](https://github.com/chen-bow
 **Docker (recommended):**
 
 ```bash
-./scripts/setup_deps.sh   # clones Instacart + ESCI into deps/
+./scripts/setup_deps.sh   # clones Stage 1 (Instacart) + Stage 2 (ESCI) into deps/
 docker compose up --build
 ```
 
-**Local dev:** `uv sync`, then start Instacart (8000) and ESCI (8001) from their repos, then `uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080`. See [Pipeline](#pipeline) for details.
+**Local dev:** `uv sync`, then start Stage 1 (Instacart, 8000) and Stage 2 (ESCI, 8001) from their repos, then `uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080`. See [Pipeline](#pipeline) for details.
 
-**What we're building:** Two-stage search (Instacart retrieval → ESCI reranking). Input: `user_id` or `user_context` + `query`. Output: ranked products with `rec_score`, `rerank_score`, `esci_label` (E/S/C/I). This repo orchestrates pre-trained services; it does not train models.
+**What we're building:** Two-stage search (**Stage 1** retrieval → **Stage 2** reranking). Input: `user_id` or `user_context` + `query`. Output: ranked products with `rec_score`, `rerank_score`, `esci_label` (E/S/C/I). This repo orchestrates pre-trained services; it does not train models.
 
 ---
 
@@ -27,8 +27,8 @@ docker compose up --build
 
 - **Python** 3.10+ (3.12 recommended; managed via `uv`).
 - **Node.js** 18+ for the web UI (optional).
-- **Instacart API** running (from [instacart_next_order_recommendation](https://github.com/chen-bowen/instacart_next_order_recommendation) or `Instacart_Personalization` locally).
-- **ESCI API** running (from [Amazon_Multitask_Search_Ranking](https://github.com/chen-bowen/Amazon_Multitask_Search_Ranking) or `Amazon_Search_Retrieval` locally).
+- **Stage 1 API (Instacart retrieval)** running (from [instacart_next_order_recommendation](https://github.com/chen-bowen/instacart_next_order_recommendation) or `Instacart_Personalization` locally).
+- **Stage 2 API (ESCI reranker)** running (from [Amazon_Multitask_Search_Ranking](https://github.com/chen-bowen/Amazon_Multitask_Search_Ranking) or `Amazon_Search_Retrieval` locally).
 - **Disk:** Minimal; orchestrator and UI are lightweight. Models and data live in the upstream repos.
 
 ---
@@ -137,7 +137,7 @@ flowchart LR
   orchestrator -->|POST /recommend| s1api
   s1api -->|top-K candidates| orchestrator
   orchestrator -->|POST /predict + candidates| s2api
-  s2api -->|reranked list + ESCI labels| orchestrator
+  s2api -->|Stage 2 reranked list + ESCI labels| orchestrator
   orchestrator -->|final ranked results| ui
 
   s1api --- s1model
@@ -145,7 +145,7 @@ flowchart LR
   s2api --- s2model
 ```
 
-**Flow:** 1) User → orchestrator (query + user_id/user_context). 2) Orchestrator → Instacart `POST /recommend` → top-K candidates. 3) Orchestrator → ESCI `POST /predict` with query + candidates. 4) ESCI → reranked list with scores, ESCI labels, substitute flags. 5) Orchestrator → final ranked list.
+**Flow:** 1) User → orchestrator (query + user_id/user_context). 2) Orchestrator → **Stage 1 (Instacart)** `POST /recommend` → top-K candidates. 3) Orchestrator → **Stage 2 (ESCI)** `POST /predict` with query + candidates. 4) Stage 2 → reranked list with scores, ESCI labels, substitute flags. 5) Orchestrator → final ranked list.
 
 ---
 
@@ -163,10 +163,10 @@ uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080
 
 | Variable            | Description                                               |
 | ------------------- | --------------------------------------------------------- |
-| `INSTACART_URL`     | Instacart API base URL (default: `http://localhost:8000`) |
-| `ESCI_URL`          | ESCI API base URL (default: `http://localhost:8001`)      |
-| `INSTACART_API_KEY` | Optional API key for Instacart (`X-API-Key` header)       |
-| `ESCI_API_KEY`      | Optional API key for ESCI (`X-API-Key` header)            |
+| `INSTACART_URL`     | Stage 1 (Instacart) API base URL (default: `http://localhost:8000`) |
+| `ESCI_URL`          | Stage 2 (ESCI) API base URL (default: `http://localhost:8001`)      |
+| `INSTACART_API_KEY` | Optional API key for Stage 1 (Instacart) (`X-API-Key` header)       |
+| `ESCI_API_KEY`      | Optional API key for Stage 2 (ESCI) (`X-API-Key` header)            |
 
 ### Endpoints
 
@@ -174,8 +174,8 @@ uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080
 | ------ | ------------------- | -------------------------------------------------- |
 | GET    | `/health`           | Liveness probe                                     |
 | GET    | `/ready`            | Readiness probe                                    |
-| POST   | `/search`           | Two-stage search (Stage 1 + Stage 2, see below)    |
-| POST   | `/stage1/recommend` | Stage 1 only: proxy to Instacart `POST /recommend` |
+| POST   | `/search`           | Two-stage search (**Stage 1 + Stage 2**, see below)    |
+| POST   | `/stage1/recommend` | Stage 1 only: proxy to Stage 1 (Instacart) `POST /recommend` |
 
 ### POST /search
 
@@ -203,10 +203,10 @@ Alternatively, provide `user_context` instead of `user_id`:
 
 | Field            | Type    | Required | Default | Description                                   |
 | ---------------- | ------- | -------- | ------- | --------------------------------------------- |
-| `user_id`        | string  | No       | —       | User ID resolvable via Instacart eval_queries |
-| `user_context`   | string  | No       | —       | Full user context string for Instacart        |
-| `query`          | string  | Yes      | —       | Search query for ESCI reranking               |
-| `top_k_retrieve` | integer | No       | 50      | Number of candidates from Instacart (1–200)   |
+| `user_id`        | string  | No       | —       | User ID resolvable via Stage 1 (Instacart) eval_queries |
+| `user_context`   | string  | No       | —       | Full user context string for Stage 1 (Instacart)        |
+| `query`          | string  | Yes      | —       | Search query for Stage 2 (ESCI) reranking               |
+| `top_k_retrieve` | integer | No       | 50      | Number of candidates from Stage 1 (Instacart) (1–200)   |
 | `top_k_final`    | integer | No       | 10      | Number of final results returned (1–100)      |
 
 Either `user_id` or `user_context` is required.
