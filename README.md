@@ -1,13 +1,3 @@
----
-title: Hybrid E-commerce Search
-emoji: 🔍
-colorFrom: blue
-colorTo: green
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # Hybrid E-Commerce Search
 
 This project wires two existing systems into a **two-stage search pipeline**: a two-tower Instacart retriever (Stage 1) and an Amazon ESCI cross-encoder reranker (Stage 2). An orchestrator service calls both backends, joins results, and exposes a single `POST /search` endpoint. A React web UI visualizes retrieval vs reranked results side-by-side, with ESCI labels and rank movement. The pipeline illustrates the standard architecture used in production search (fast recall → precise rerank), even though the two models are trained on different datasets (Instacart grocery co-purchase vs Amazon product search).
