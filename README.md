@@ -1,3 +1,13 @@
+---
+title: Hybrid E-commerce Search
+emoji: 🔍
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Hybrid E-Commerce Search
 
 This project wires two existing systems into a **two-stage search pipeline**: a two-tower Instacart retriever (Stage 1) and an Amazon ESCI cross-encoder reranker (Stage 2). An orchestrator service calls both backends, joins results, and exposes a single `POST /search` endpoint. A React web UI visualizes retrieval vs reranked results side-by-side, with ESCI labels and rank movement. The pipeline illustrates the standard architecture used in production search (fast recall → precise rerank), even though the two models are trained on different datasets (Instacart grocery co-purchase vs Amazon product search).
@@ -170,12 +180,12 @@ uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080
 
 ### Endpoints
 
-| Method | Path                 | Description                                        |
-| ------ | -------------------- | -------------------------------------------------- |
-| GET    | `/health`            | Liveness probe                                     |
-| GET    | `/ready`             | Readiness probe                                    |
-| POST   | `/search`            | Two-stage search (Stage 1 + Stage 2, see below)    |
-| POST   | `/stage1/recommend`  | Stage 1 only: proxy to Instacart `POST /recommend` |
+| Method | Path                | Description                                        |
+| ------ | ------------------- | -------------------------------------------------- |
+| GET    | `/health`           | Liveness probe                                     |
+| GET    | `/ready`            | Readiness probe                                    |
+| POST   | `/search`           | Two-stage search (Stage 1 + Stage 2, see below)    |
+| POST   | `/stage1/recommend` | Stage 1 only: proxy to Instacart `POST /recommend` |
 
 ### POST /search
 
@@ -271,12 +281,12 @@ The orchestrator calls two backend services. Their exact request/response schema
 
 Request:
 
-| Field              | Type     | Required | Default | Description                               |
-| ------------------ | -------- | -------- | ------- | ----------------------------------------- |
-| user_context       | string   | No       | null    | Full user context string (max 10,000 chars) |
-| user_id            | string   | No       | null    | User ID resolvable via eval_queries.json  |
-| top_k              | integer  | No       | 10      | Number of recommendations (1–100)         |
-| exclude_product_ids| string[] | No       | []      | Product IDs to exclude                    |
+| Field               | Type     | Required | Default | Description                                 |
+| ------------------- | -------- | -------- | ------- | ------------------------------------------- |
+| user_context        | string   | No       | null    | Full user context string (max 10,000 chars) |
+| user_id             | string   | No       | null    | User ID resolvable via eval_queries.json    |
+| top_k               | integer  | No       | 10      | Number of recommendations (1–100)           |
+| exclude_product_ids | string[] | No       | []      | Product IDs to exclude                      |
 
 Either `user_context` or `user_id` is required.
 
