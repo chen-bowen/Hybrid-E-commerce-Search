@@ -1,7 +1,7 @@
 """
 Two-Stage Search Orchestrator API.
 
-Calls Stage 1 (Instacart retrieval) and Stage 2 (ESCI reranker), joins results,
+Calls Stage 1 (Stage 1 Retrieval) and Stage 2 (ESCI reranker), joins results,
 and exposes a single POST /search endpoint.
 """
 
@@ -97,7 +97,7 @@ async def stage1_recommend(req: TwoStageRequest) -> dict:
 @app.post("/search", response_model=TwoStageResponse)
 async def two_stage_search(req: TwoStageRequest) -> TwoStageResponse:
     """
-    Two-stage search: Stage 1 (Instacart retrieval) and Stage 2 (ESCI reranking).\n\n
+    Two-stage search: Stage 1 (Retrieval) and Stage 2 (Reranking).\n\n
     Requires: user_id or user_context, plus query.
     """
     # If neither user_id nor user_context is provided (e.g. empty UI field),
@@ -109,7 +109,7 @@ async def two_stage_search(req: TwoStageRequest) -> TwoStageResponse:
     request_id = str(uuid4())
 
     try:
-        # Stage 1: Instacart retrieval
+        # Stage 1: Retrieval
         instacart_payload: dict = {
             "top_k": req.top_k_retrieve,
         }
@@ -138,7 +138,7 @@ async def two_stage_search(req: TwoStageRequest) -> TwoStageResponse:
         candidates = [{"product_id": r["product_id"], "text": r.get("product_text") or ""} for r in recs]
         rec_map = {r["product_id"]: r for r in recs}
 
-        # Stage 2: ESCI reranking
+        # Stage 2:Reranking
         esci_payload = {
             "query": req.query,
             "candidates": candidates,

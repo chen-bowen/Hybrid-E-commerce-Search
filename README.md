@@ -1,6 +1,6 @@
 # Hybrid E-Commerce Search
 
-This project wires two existing systems into a **two-stage search pipeline**: **Stage 1** (Instacart retrieval, two-tower retriever) and **Stage 2** (ESCI reranker, Amazon cross-encoder). An orchestrator service calls both backends, joins results, and exposes a single `POST /search` endpoint. A React web UI visualizes retrieval vs reranked results side-by-side, with ESCI labels and rank movement. The pipeline illustrates the standard architecture used in production search (fast recall → precise rerank), even though the two models are trained on different datasets (Instacart grocery co-purchase vs Amazon product search).
+This project wires two existing systems into a **two-stage search pipeline**: **Stage 1** (Stage 1 Retrieval, two-tower retriever) and **Stage 2** (ESCI reranker, Amazon cross-encoder). An orchestrator service calls both backends, joins results, and exposes a single `POST /search` endpoint. A React web UI visualizes retrieval vs reranked results side-by-side, with ESCI labels and rank movement. The pipeline illustrates the standard architecture used in production search (fast recall → precise rerank), even though the two models are trained on different datasets (Instacart grocery co-purchase vs Amazon product search).
 
 Related repos: [instacart_next_order_recommendation](https://github.com/chen-bowen/instacart_next_order_recommendation), [Amazon_Multitask_Search_Ranking](https://github.com/chen-bowen/Amazon_Multitask_Search_Ranking).
 
@@ -29,7 +29,7 @@ Open the app at `http://localhost:7860`. The gateway routes UI traffic to the fr
 
 - **Python** 3.10+ (3.12 recommended; managed via `uv`).
 - **Node.js** 18+ for the web UI (optional).
-- **Stage 1 API (Instacart retrieval)** running (from [instacart_next_order_recommendation](https://github.com/chen-bowen/instacart_next_order_recommendation) or `Instacart_Personalization` locally).
+- **Stage 1 API (Stage 1 Retrieval)** running (from [instacart_next_order_recommendation](https://github.com/chen-bowen/instacart_next_order_recommendation) or `Instacart_Personalization` locally).
 - **Stage 2 API (ESCI reranker)** running (from [Amazon_Multitask_Search_Ranking](https://github.com/chen-bowen/Amazon_Multitask_Search_Ranking) or `Amazon_Search_Retrieval` locally).
 - **Disk:** Minimal; orchestrator and UI are lightweight. Models and data live in the upstream repos.
 
@@ -49,11 +49,11 @@ Open the app at `http://localhost:7860`. The gateway routes UI traffic to the fr
 
 ## How to use each component
 
-| Component        | Command / Usage                                                                 | When to use                                            |
-| ---------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| **Orchestrator** | `uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080`                    | Serve the two-stage search API                         |
-| **Smoke script** | `uv run two-stage-search --user-id 3178496 --query "organic whole wheat bread"` | CLI smoke script for the search endpoint               |
-| **Web UI**       | `cd frontend && npm install && npm run dev`                                     | Interactive exploration; side-by-side and diff views   |
+| Component        | Command / Usage                                                                 | When to use                                                  |
+| ---------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| **Orchestrator** | `uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080`                    | Serve the two-stage search API                               |
+| **Smoke script** | `uv run two-stage-search --user-id 3178496 --query "organic whole wheat bread"` | CLI smoke script for the search endpoint                     |
+| **Web UI**       | `cd frontend && npm install && npm run dev`                                     | Interactive exploration; side-by-side and diff views         |
 | **Docker**       | `./scripts/setup_deps.sh` then `docker compose up --build`                      | Run full stack (Stage 1, Stage 2, orchestrator, UI, gateway) |
 
 **Typical workflow:** 1) Start Instacart and ESCI services → 2) Start orchestrator → 3) Use UI or smoke script to explore.
@@ -129,7 +129,7 @@ flowchart LR
     s2model[Amazon ESCI cross-encoder]
   end
 
-  subgraph Stage1["Stage 1: Instacart Retrieval"]
+  subgraph Stage1["Stage 1: Stage 1 Retrieval"]
     s1api[Instacart API /recommend]
     s1model[Two-tower model HF instacart-two-tower-sbert]
     s1corpus[Eval corpus HF instacart-eval-corpus]
@@ -163,8 +163,8 @@ uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080
 
 **Environment variables:**
 
-| Variable            | Description                                               |
-| ------------------- | --------------------------------------------------------- |
+| Variable            | Description                                                         |
+| ------------------- | ------------------------------------------------------------------- |
 | `INSTACART_URL`     | Stage 1 (Instacart) API base URL (default: `http://localhost:8000`) |
 | `ESCI_URL`          | Stage 2 (ESCI) API base URL (default: `http://localhost:8001`)      |
 | `INSTACART_API_KEY` | Optional API key for Stage 1 (Instacart) (`X-API-Key` header)       |
@@ -172,11 +172,11 @@ uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080
 
 ### Endpoints
 
-| Method | Path                | Description                                        |
-| ------ | ------------------- | -------------------------------------------------- |
-| GET    | `/health`           | Liveness probe                                     |
-| GET    | `/ready`            | Readiness probe                                    |
-| POST   | `/search`           | Two-stage search (**Stage 1 + Stage 2**, see below)    |
+| Method | Path                | Description                                                  |
+| ------ | ------------------- | ------------------------------------------------------------ |
+| GET    | `/health`           | Liveness probe                                               |
+| GET    | `/ready`            | Readiness probe                                              |
+| POST   | `/search`           | Two-stage search (**Stage 1 + Stage 2**, see below)          |
 | POST   | `/stage1/recommend` | Stage 1 only: proxy to Stage 1 (Instacart) `POST /recommend` |
 
 ### POST /search
@@ -203,13 +203,13 @@ Alternatively, provide `user_context` instead of `user_id`:
 }
 ```
 
-| Field            | Type    | Required | Default | Description                                   |
-| ---------------- | ------- | -------- | ------- | --------------------------------------------- |
+| Field            | Type    | Required | Default | Description                                             |
+| ---------------- | ------- | -------- | ------- | ------------------------------------------------------- |
 | `user_id`        | string  | No       | —       | User ID resolvable via Stage 1 (Instacart) eval_queries |
 | `user_context`   | string  | No       | —       | Full user context string for Stage 1 (Instacart)        |
 | `query`          | string  | Yes      | —       | Search query for Stage 2 (ESCI) reranking               |
 | `top_k_retrieve` | integer | No       | 50      | Number of candidates from Stage 1 (Instacart) (1–200)   |
-| `top_k_final`    | integer | No       | 10      | Number of final results returned (1–100)      |
+| `top_k_final`    | integer | No       | 10      | Number of final results returned (1–100)                |
 
 Either `user_id` or `user_context` is required.
 
@@ -263,7 +263,7 @@ curl -X POST http://localhost:8080/search \
 
 The orchestrator calls two backend services. Their exact request/response schemas are documented below.
 
-### Instacart retrieval API (Stage 1)
+### Stage 1 Retrieval API (Stage 1)
 
 **Repository:** [instacart_next_order_recommendation](https://github.com/chen-bowen/instacart_next_order_recommendation) (or `Instacart_Personalization` locally)
 **Base URL:** `http://localhost:8000` (default)
@@ -320,7 +320,6 @@ A React/Vite web UI is available in `frontend/` for interactive exploration. Cur
 
 <img width="2400" height="1324" alt="image" src="https://github.com/user-attachments/assets/931c6daf-ae9a-4f25-87b7-563df45c90e1" />
 
-
 ### Run
 
 ```bash
@@ -333,7 +332,7 @@ Open [http://localhost:5173](http://localhost:5173). Configure the API URL (defa
 
 ### Features
 
-- **Side-by-side view:** Stage 1 (Instacart retrieval) vs Stage 2 (ESCI reranked)
+- **Side-by-side view:** Stage 1 (Stage 1 Retrieval) vs Stage 2 (ESCI reranked)
 - **Diff view:** Single list with rank movement (e.g. `#2 (was #7)`)
 - **ESCI labels:** Color-coded badges (E=green, S=blue, C=orange, I=grey)
 - **Stats bar:** Latency breakdown for Instacart vs ESCI
@@ -428,13 +427,13 @@ docker compose up --build
 
 #### Services (compose)
 
-| Service      | Port | Description                  |
-| ------------ | ---- | ---------------------------- |
-| stage-1-api  | 8000 | Stage 1: Instacart retrieval |
-| stage-2-api  | 8001 | Stage 2: ESCI reranker       |
-| orchestrator | 8080 | Two-stage search API         |
-| frontend     | 80 (internal) | React app served behind gateway |
-| gateway      | 7860 | Public entrypoint (UI + `/api/*`) |
+| Service      | Port          | Description                       |
+| ------------ | ------------- | --------------------------------- |
+| stage-1-api  | 8000          | Stage 1: Stage 1 Retrieval        |
+| stage-2-api  | 8001          | Stage 2: ESCI reranker            |
+| orchestrator | 8080          | Two-stage search API              |
+| frontend     | 80 (internal) | React app served behind gateway   |
+| gateway      | 7860          | Public entrypoint (UI + `/api/*`) |
 
 Key routes when compose is running:
 
@@ -479,16 +478,16 @@ If your Hugging Face repos are public, `HF_TOKEN` can be omitted.
 
 ## Project structure
 
-| Path                            | Description                                                           |
-| ------------------------------- | --------------------------------------------------------------------- |
-| **backend/**                    | FastAPI orchestrator: `main.py`, `schemas.py`                         |
-| **frontend/**                   | React/Vite web UI: query form, side-by-side and diff views, stats bar |
-| **backend/two_stage_search.py** | CLI smoke script for `POST /search` (run: `uv run two-stage-search`)  |
-| **scripts/setup_deps.sh**       | Clone Instacart + ESCI repos into `deps/` for Docker                  |
-| **tests/**                      | Unit tests (e.g. `tests/test_schemas.py`)                             |
-| **Dockerfile**                  | Multi-stage image: compose backend target + HF Space single-container runtime |
+| Path                            | Description                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------------ |
+| **backend/**                    | FastAPI orchestrator: `main.py`, `schemas.py`                                  |
+| **frontend/**                   | React/Vite web UI: query form, side-by-side and diff views, stats bar          |
+| **backend/two_stage_search.py** | CLI smoke script for `POST /search` (run: `uv run two-stage-search`)           |
+| **scripts/setup_deps.sh**       | Clone Instacart + ESCI repos into `deps/` for Docker                           |
+| **tests/**                      | Unit tests (e.g. `tests/test_schemas.py`)                                      |
+| **Dockerfile**                  | Multi-stage image: compose backend target + HF Space single-container runtime  |
 | **docker-compose.yml**          | Local multi-container stack: Stage 1, Stage 2, orchestrator, frontend, gateway |
-| **pyproject.toml**, **uv.lock** | Project and dependency lock (uv)                                      |
+| **pyproject.toml**, **uv.lock** | Project and dependency lock (uv)                                               |
 
 ---
 

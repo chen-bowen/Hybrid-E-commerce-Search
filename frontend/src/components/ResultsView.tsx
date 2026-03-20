@@ -54,7 +54,7 @@ export function ResultsView({
   return (
     <div className="results-side-by-side">
       <div className="results-column">
-        <h3>Stage 1 – Instacart retrieval</h3>
+        <h3>Stage 1 – Retrieval</h3>
         <div className="results-list">
           {retrievalOrdered.map((item, i) => (
             <ResultCard
@@ -68,7 +68,7 @@ export function ResultsView({
         </div>
       </div>
       <div className="results-column">
-        <h3>Stage 2 – ESCI reranked</h3>
+        <h3>Stage 2 – Reranking</h3>
         <div className="results-list">
           {rerankOrdered.map((item, i) => (
             <ResultCard

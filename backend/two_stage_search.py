@@ -32,12 +32,12 @@ def main() -> None:
     parser.add_argument(
         "--user-id",
         default="3178496",
-        help="User ID for Instacart retrieval",
+        help="User ID for Stage 1 Retrieval",
     )
     parser.add_argument(
         "--query",
         default="organic whole wheat bread",
-        help="Search query for ESCI reranking",
+        help="Search query for Stage 2 Reranking",
     )
     parser.add_argument(
         "--top-k-retrieve",

@@ -1,15 +1,15 @@
 import { useState } from "react";
-import { QueryForm } from "./components/QueryForm";
-import "./App.css";
-import { StatsBar } from "./components/StatsBar";
-import { ResultsView } from "./components/ResultsView";
 import {
   search,
   stage1Recommend,
+  type FinalItem,
   type SearchResponse,
   type Stage1RecommendResponse,
-  type FinalItem,
 } from "./api/searchClient";
+import "./App.css";
+import { QueryForm } from "./components/QueryForm";
+import { ResultsView } from "./components/ResultsView";
+import { StatsBar } from "./components/StatsBar";
 
 type ViewMode = "side-by-side" | "diff";
 
@@ -51,16 +51,11 @@ export default function App() {
     <div className="app">
       <header className="header">
         <h1>Two-Stage Search</h1>
-        <p className="subtitle">
-          Instacart retrieval → ESCI reranking
-        </p>
+        <p className="subtitle">Retrieval → Reranking</p>
       </header>
 
       <aside className="sidebar">
-        <QueryForm
-          onSubmit={handleSearch}
-          loading={loading}
-        />
+        <QueryForm onSubmit={handleSearch} loading={loading} />
       </aside>
 
       <main className="main">
@@ -80,11 +75,7 @@ export default function App() {
           </button>
         </div>
 
-        {error && (
-          <div className="error-banner">
-            {error}
-          </div>
-        )}
+        {error && <div className="error-banner">{error}</div>}
 
         {data && (
           <>
@@ -111,8 +102,9 @@ export default function App() {
           <div className="empty-state">
             <p>Enter a query (User ID is optional), then click Search.</p>
             <p className="muted">
-              If you leave User ID blank, the backend will use a sample Instacart
-              context so you can explore the two-stage pipeline quickly.
+              If you leave User ID blank, the backend will use a sample
+              Instacart context so you can explore the two-stage pipeline
+              quickly.
             </p>
           </div>
         )}

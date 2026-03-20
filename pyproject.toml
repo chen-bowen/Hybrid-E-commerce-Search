@@ -1,7 +1,7 @@
 [project]
 name = "hybrid-ecommerce-search"
 version = "0.1.0"
-description = "Two-stage search pipeline: Instacart retrieval + ESCI reranking"
+description = "Two-stage search pipeline: Stage 1 Retrieval +Stage 2 Reranking"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.109.0",

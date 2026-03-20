@@ -1,4 +1,4 @@
-# Two-Stage Search Pipeline: Instacart retrieval + ESCI reranking
+# Two-Stage Search Pipeline: Stage 1 Retrieval +Stage 2 Reranking
 #
 # Meta-repo: run ./scripts/setup_deps.sh first to clone backend repos into deps/.
 # Then: docker compose up --build

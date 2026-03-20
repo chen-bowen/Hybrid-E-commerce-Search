@@ -16,16 +16,16 @@ class TwoStageRequest(BaseModel):
 
     user_id: Optional[str] = Field(
         default=None,
-        description="User identifier resolvable to a stored eval query (order_id) for Instacart retrieval.",
+        description="User identifier resolvable to a stored eval query (order_id) for Stage 1 Retrieval.",
     )
     user_context: Optional[str] = Field(
         default=None,
         max_length=10_000,
-        description="Full user context string for Instacart retrieval (e.g. '[+7d w4h14] Organic Milk, Whole Wheat Bread.').",
+        description="Full user context string for Stage 1 Retrieval (e.g. '[+7d w4h14] Organic Milk, Whole Wheat Bread.').",
     )
     query: str = Field(
         ...,
-        description="Search query text used for ESCI reranking.",
+        description="Search query text used for Stage 2 Reranking.",
     )
     top_k_retrieve: int = Field(
         default=50,
@@ -37,7 +37,7 @@ class TwoStageRequest(BaseModel):
         default=10,
         ge=1,
         le=100,
-        description="Number of final results to return after ESCI reranking (Stage 2).",
+        description="Number of final results to return after Stage 2 Reranking.",
     )
 
 
