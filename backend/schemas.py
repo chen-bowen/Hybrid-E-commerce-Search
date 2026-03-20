@@ -21,7 +21,10 @@ class TwoStageRequest(BaseModel):
     user_context: Optional[str] = Field(
         default=None,
         max_length=10_000,
-        description="Full user context string for Stage 1 Retrieval (e.g. '[+7d w4h14] Organic Milk, Whole Wheat Bread.').",
+        description=(
+            "Purchase history string for Stage 1 retrieval (formerly called "
+            "`user_context`). Example: '[+7d w4h14] Organic Milk, Whole Wheat Bread.'"
+        ),
     )
     query: str = Field(
         ...,

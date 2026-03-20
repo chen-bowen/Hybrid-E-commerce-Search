@@ -44,8 +44,10 @@ services:
       dockerfile: Dockerfile
     container_name: stage-2-api
     environment:
-      MODEL_PATH: /app/checkpoints/multi_task_reranker
+      # Use the HF repo id directly so the reranker downloads the correct snapshot.
+      MODEL_PATH: chenbowen184/amazon-multitask-reranker
       INFERENCE_DEVICE: cpu
+      HF_TOKEN: ${HF_TOKEN:-}
     volumes:
       - ${ESCI_CHECKPOINTS:-./deps/stage-2/checkpoints/multi_task_reranker}:/app/checkpoints/multi_task_reranker:ro
     ports:

@@ -23,16 +23,22 @@ export function QueryForm({
   loading,
 }: QueryFormProps) {
   const [userId, setUserId] = useState("");
+  const [purchaseHistory, setPurchaseHistory] = useState("");
   const [query, setQuery] = useState("organic whole wheat bread");
   const [topKRetrieve, setTopKRetrieve] = useState(50);
   const [topKFinal, setTopKFinal] = useState(10);
 
+  const canSubmit = userId.trim().length > 0 || purchaseHistory.trim().length > 0;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedUserId = userId.trim();
+    const trimmedPurchaseHistory = purchaseHistory.trim();
+
     onSubmit(
-      userId.trim()
+      trimmedUserId
         ? {
-            user_id: userId.trim(),
+            user_id: trimmedUserId,
             query,
             top_k_retrieve: topKRetrieve,
             top_k_final: topKFinal,
@@ -41,6 +47,11 @@ export function QueryForm({
             query,
             top_k_retrieve: topKRetrieve,
             top_k_final: topKFinal,
+            ...(trimmedPurchaseHistory
+              ? {
+                  user_context: trimmedPurchaseHistory,
+                }
+              : {}),
           },
     );
   };
@@ -62,11 +73,23 @@ export function QueryForm({
             type="text"
             value={userId}
             onChange={(e) => setUserId(e.target.value)}
-            placeholder="Leave blank to use a sample context"
+            placeholder="Leave blank if you provide purchase history below"
           />
           <button type="button" onClick={pickRandomUser} title="Random user">
             Random
           </button>
+        </div>
+      </label>
+      <label>
+        Purchase history (optional)
+        <textarea
+          value={purchaseHistory}
+          onChange={(e) => setPurchaseHistory(e.target.value)}
+          placeholder="[+7d w4h14] Organic Milk, Whole Wheat Bread."
+        />
+        <div className="muted-text">
+          If `User ID` is set, Stage 1 will use Instacart’s stored history for
+          that user (purchase history input is ignored).
         </div>
       </label>
       <label>
@@ -105,9 +128,14 @@ export function QueryForm({
         />
         <span>{topKFinal}</span>
       </label>
-      <button type="submit" disabled={loading}>
+      <button type="submit" disabled={loading || !canSubmit}>
         {loading ? "Searching…" : "Search"}
       </button>
+      {!canSubmit && (
+        <div className="muted-text">
+          Provide either a `User ID` or purchase history before searching.
+        </div>
+      )}
     </form>
   );
 }

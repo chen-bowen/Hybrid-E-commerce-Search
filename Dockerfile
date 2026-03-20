@@ -52,7 +52,7 @@ ENV CORPUS_HF_REPO_TYPE=dataset
 ENV INFERENCE_DEVICE=cpu
 
 # Stage 2 defaults (if local checkpoint missing/empty, loader will fall back)
-ENV MODEL_PATH=/app/checkpoints/multi_task_reranker
+ENV MODEL_PATH=chenbowen184/amazon-multitask-reranker
 
 # Clone the backend repos and install their dependencies into separate venvs.
 # This avoids Python module name collisions: both repos use `src.*`.

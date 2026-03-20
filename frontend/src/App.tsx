@@ -80,6 +80,14 @@ export default function App() {
         {data && (
           <>
             <StatsBar stats={data.final.stats} />
+            <div className="purchase-history-echo">
+              <h3>Purchase history used (Stage 1 signal)</h3>
+              <pre>
+                {((data.final.stats as any).purchase_history_used as
+                  | string
+                  | undefined) ?? "-"}
+              </pre>
+            </div>
             <ResultsView
               stage1Items={data.stage1.recommendations.map<FinalItem>(
                 (r, idx) => ({
@@ -100,11 +108,10 @@ export default function App() {
 
         {!data && !loading && !error && (
           <div className="empty-state">
-            <p>Enter a query (User ID is optional), then click Search.</p>
+            <p>Enter a query, and provide either a User ID or purchase history.</p>
             <p className="muted">
-              If you leave User ID blank, the backend will use a sample
-              Instacart context so you can explore the two-stage pipeline
-              quickly.
+              Stage 1 retrieval uses your purchase history (or Instacart’s stored
+              history for the selected user).
             </p>
           </div>
         )}

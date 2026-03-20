@@ -30,6 +30,7 @@ export interface SearchResponse {
     num_returned?: number;
     stage_1_stats?: Record<string, unknown>;
     stage_2_stats?: Record<string, unknown>;
+    purchase_history_used?: string;
     total_latency_ms?: number;
   };
 }
