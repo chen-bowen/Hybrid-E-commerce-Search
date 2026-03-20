@@ -174,8 +174,23 @@
   margin: 0 0 1.5rem 0;
 }
 
+.purchase-history-echo h3 {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.purchase-history-echo h3:first-of-type {
+  margin-top: 0;
+}
+
+.purchase-history-echo h3 + pre {
+  margin-top: 0;
+}
+
 .purchase-history-echo pre {
-  margin: 0.5rem 0 0;
+  margin: 0.25rem 0 0;
   white-space: pre-wrap;
   color: var(--text-muted);
   font-size: 0.85rem;

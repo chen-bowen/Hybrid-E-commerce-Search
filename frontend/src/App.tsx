@@ -21,6 +21,7 @@ export default function App() {
     final: SearchResponse;
   } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("side-by-side");
+  const [lastQuery, setLastQuery] = useState<string>("");
   // In production behind Nginx, `/api` is proxied to the FastAPI backend.
   // In local dev, Vite's proxy maps `/api` -> `http://localhost:8080`.
   const [apiUrl] = useState("/api");
@@ -34,6 +35,7 @@ export default function App() {
   }) => {
     setLoading(true);
     setError(null);
+    setLastQuery(params.query);
     try {
       const [stage1, final] = await Promise.all([
         stage1Recommend(params, apiUrl),
@@ -81,7 +83,9 @@ export default function App() {
           <>
             <StatsBar stats={data.final.stats} />
             <div className="purchase-history-echo">
-              <h3>Purchase history used</h3>
+              <h3>User Query</h3>
+              <pre>{lastQuery || "-"}</pre>
+              <h3>Purchase History</h3>
               <pre>
                 {(() => {
                   const v = (data.final.stats as any).purchase_history_used as
@@ -118,8 +122,7 @@ export default function App() {
               Enter a query, and provide either a User ID or purchase history.
             </p>
             <p className="muted">
-              Stage 1 retrieval uses your purchase history (or Instacart’s
-              stored history for the selected user).
+              Stage 1 retrieval uses your purchase history.
             </p>
           </div>
         )}
