@@ -251,10 +251,34 @@ Either `user_id` or `user_context` is required.
 curl http://localhost:8080/health
 # {"status":"ok"}
 
-# Search
+# Search (Stage 1 + Stage 2) using user_id
 curl -X POST http://localhost:8080/search \
   -H "Content-Type: application/json" \
-  -d '{"user_id": "3178496", "query": "organic whole wheat bread", "top_k_retrieve": 20, "top_k_final": 10}'
+  -d '{
+    "user_id": "3178496",
+    "query": "organic whole wheat bread",
+    "top_k_retrieve": 20,
+    "top_k_final": 10
+  }'
+
+# Search (Stage 1 + Stage 2) using purchase history directly
+curl -X POST http://localhost:8080/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_context": "[+7d w4h14] Organic Milk, Whole Wheat Bread.",
+    "query": "organic whole wheat bread",
+    "top_k_retrieve": 20,
+    "top_k_final": 10
+  }'
+
+# Stage 1 only (Instacart retrieval)
+curl -X POST http://localhost:8080/stage1/recommend \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "3178496",
+    "query": "organic whole wheat bread",
+    "top_k_retrieve": 20
+  }'
 ```
 
 ---
@@ -339,21 +363,6 @@ Open [http://localhost:5173](http://localhost:5173). Configure the API URL (defa
 - **ESCI labels:** Color-coded badges (E=green, S=blue, C=orange, I=grey)
 - **Stats bar:** Latency breakdown for Instacart vs ESCI
 - **Random user/query:** Quick buttons for sample inputs
-
----
-
-## Failure analysis: when cross-encoders fail
-
-This repo intentionally includes a **failed experiment** as a narrative device.
-
-1. **Step 1 – Two-tower retrieval (works):** The Instacart two-tower model retrieves strong candidates given a user (or user_context). This is covered in detail in the Instacart repo.
-2. **Step 2 – Add a cross-encoder reranker (natural next step):** The obvious follow-up is to add a slower but more precise cross-encoder on top of the two-tower retriever.
-3. **Step 3 – Naively reuse an Amazon-trained cross-encoder:** Here, the ESCI reranker (trained on Amazon product search) is pointed at Instacart-style product text. For queries like `"organic whole wheat bread"`, the reranker returns items that _look_ relevant to humans but assigns them low scores and mostly `I` (Irrelevant) labels.
-4. **What the JSON tells you:** The pipeline is working as coded (retrieval → rerank → top_k_final), but the rerank scores and ESCI labels are poorly calibrated on Instacart data. The model is out-of-domain: it was never trained on grocery-style, field-based product strings such as `"Product: Organic Whole Wheat Bread. Aisle: bread. Department: bakery."`.
-5. **Why it failed – domain mismatch:** Cross-encoders are **highly domain- and format-sensitive**. Training on Amazon titles/descriptions with ESCI labels does not transfer cleanly to Instacart-style text and behavior. When the inputs look out-of-distribution, the model tends to default to its majority/“safe” class (often `I`) and compress scores into a narrow, low range.
-6. **How to fix it – train in-domain:** The right solution is not to hand-tune thresholds, but to **train or fine-tune a reranker on Instacart data**: Instacart queries + product text + in-domain relevance signals (clicks, purchases, human labels, etc.). The architecture here (two-tower → cross-encoder) still applies; the issue is **mismatched training distribution**, not the pipeline.
-
-This failed reranker experiment is deliberate: it mirrors real-world ML workflows, where “I tried the obvious thing from another domain and it didn’t work” is often the starting point for a more careful, in-domain solution.
 
 ---
 
