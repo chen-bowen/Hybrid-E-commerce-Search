@@ -318,7 +318,8 @@ Either `user_context` or `user_id` is required.
 
 A React/Vite web UI is available in `frontend/` for interactive exploration. Currently deployed via [HuggingFace Space](https://huggingface.co/spaces/chenbowen184/hybrid-ecommerce-search)
 
-<img width="2400" height="1324" alt="image" src="https://github.com/user-attachments/assets/931c6daf-ae9a-4f25-87b7-563df45c90e1" />
+<img width="2028" height="1030" alt="image" src="https://github.com/user-attachments/assets/9f5296a5-e1f4-46b0-babd-53ff52a69cab" />
+
 
 ### Run
 
