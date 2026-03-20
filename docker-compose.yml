@@ -72,8 +72,8 @@ services:
       target: backend-runtime
     container_name: two-stage-orchestrator
     environment:
-      INSTACART_URL: http://stage-1-api:8000
-      ESCI_URL: http://stage-2-api:8000
+      STAGE_1_URL: http://stage-1-api:8000
+      STAGE_2_URL: http://stage-2-api:8000
     depends_on:
       stage-1-api:
         condition: service_healthy

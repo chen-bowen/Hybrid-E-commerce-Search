@@ -81,11 +81,17 @@ export default function App() {
           <>
             <StatsBar stats={data.final.stats} />
             <div className="purchase-history-echo">
-              <h3>Purchase history used (Stage 1 signal)</h3>
+              <h3>Purchase history used</h3>
               <pre>
-                {((data.final.stats as any).purchase_history_used as
-                  | string
-                  | undefined) ?? "-"}
+                {(() => {
+                  const v = (data.final.stats as any).purchase_history_used as
+                    | string
+                    | undefined;
+                  return (
+                    v ??
+                    "No stored purchase history found for the provided User ID. Stage 1 used your query only."
+                  );
+                })()}
               </pre>
             </div>
             <ResultsView
@@ -108,10 +114,12 @@ export default function App() {
 
         {!data && !loading && !error && (
           <div className="empty-state">
-            <p>Enter a query, and provide either a User ID or purchase history.</p>
+            <p>
+              Enter a query, and provide either a User ID or purchase history.
+            </p>
             <p className="muted">
-              Stage 1 retrieval uses your purchase history (or Instacart’s stored
-              history for the selected user).
+              Stage 1 retrieval uses your purchase history (or Instacart’s
+              stored history for the selected user).
             </p>
           </div>
         )}

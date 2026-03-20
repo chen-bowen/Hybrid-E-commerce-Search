@@ -47,17 +47,17 @@ export function ResultCard({
           <span
             className="esci-badge"
             style={{
-              backgroundColor: item.esci_label
-                ? ESCI_COLORS[item.esci_label] ?? "var(--e-irrelevant)"
+              backgroundColor: item.stage_2_label
+                ? (ESCI_COLORS[item.stage_2_label] ?? "var(--e-irrelevant)")
                 : "transparent",
             }}
             title={
-              item.esci_label
-                ? ESCI_LABELS[item.esci_label] ?? item.esci_label
+              item.stage_2_label
+                ? (ESCI_LABELS[item.stage_2_label] ?? item.stage_2_label)
                 : undefined
             }
           >
-            {item.esci_label ?? "-"}
+            {item.stage_2_label ?? "-"}
           </span>
         )}
         {showEsci && item.is_substitute && (

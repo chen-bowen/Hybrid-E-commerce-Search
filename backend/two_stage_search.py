@@ -98,7 +98,7 @@ def main() -> None:
         pid = item.get("product_id", "")
         rec = item.get("rec_score", 0)
         rerank = item.get("rerank_score", 0)
-        esci = item.get("esci_label") or "-"
+        esci = item.get("stage_2_label") or "-"
         sub = "Y" if item.get("is_substitute") else "N"
         text = (item.get("product_text") or "")[:60]
         print(f"{i:<6} {pid:<12} {rec:<10.4f} {rerank:<10.4f} {esci:<6} {sub:<6}  {text}")

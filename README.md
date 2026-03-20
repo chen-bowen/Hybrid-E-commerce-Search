@@ -21,7 +21,7 @@ Open the app at `http://localhost:7860`. The gateway routes UI traffic to the fr
 
 **Local dev:** `uv sync`, then start Stage 1 (Instacart, 8000) and Stage 2 (ESCI, 8001) from their repos, then `uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080`. See [Pipeline](#pipeline) for details.
 
-**What we're building:** Two-stage search (**Stage 1** retrieval → **Stage 2** reranking). Input: `user_id` or `user_context` + `query`. Output: ranked products with `rec_score`, `rerank_score`, `esci_label` (E/S/C/I). This repo orchestrates pre-trained services; it does not train models.
+**What we're building:** Two-stage search (**Stage 1** retrieval → **Stage 2** reranking). Input: `user_id` or `user_context` + `query`. Output: ranked products with `rec_score`, `rerank_score`, `stage_2_label` (E/S/C/I). This repo orchestrates pre-trained services; it does not train models.
 
 ---
 
@@ -80,7 +80,7 @@ cd path/to/Amazon_Multitask_Search_Ranking  # or Amazon_Search_Retrieval
 uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8001
 ```
 
-Note: ESCI runs on 8000 internally; expose it externally on 8001 for the orchestrator, or set `ESCI_URL=http://localhost:8001` when ESCI is on 8001.
+Note: ESCI runs on 8000 internally; expose it externally on 8001 for the orchestrator, or set `STAGE_2_URL=http://localhost:8001` when ESCI is on 8001.
 
 ### 2. Start orchestrator
 
@@ -165,8 +165,8 @@ uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080
 
 | Variable            | Description                                                         |
 | ------------------- | ------------------------------------------------------------------- |
-| `INSTACART_URL`     | Stage 1 (Instacart) API base URL (default: `http://localhost:8000`) |
-| `ESCI_URL`          | Stage 2 (ESCI) API base URL (default: `http://localhost:8001`)      |
+| `STAGE_1_URL`       | Stage 1 (Instacart) API base URL (default: `http://localhost:8000`) |
+| `STAGE_2_URL`       | Stage 2 (ESCI) API base URL (default: `http://localhost:8001`)      |
 | `INSTACART_API_KEY` | Optional API key for Stage 1 (Instacart) (`X-API-Key` header)       |
 | `ESCI_API_KEY`      | Optional API key for Stage 2 (ESCI) (`X-API-Key` header)            |
 
@@ -223,7 +223,7 @@ Either `user_id` or `user_context` is required.
       "retrieval_rank": 1,
       "rec_score": 0.7639,
       "rerank_score": 0.9123,
-      "esci_label": "E",
+      "stage_2_label": "E",
       "is_substitute": false,
       "product_text": "Product: Whole Wheat Bread. Aisle: bread. Department: bakery."
     }
@@ -242,7 +242,7 @@ Either `user_id` or `user_context` is required.
 - `retrieval_rank`: 1-based rank in Stage 1 (Instacart) order; used by the UI for rank movement.
 - `rec_score`: Retrieval similarity from Instacart.
 - `rerank_score`: Relevance score from ESCI.
-- `esci_label`: E (Exact), S (Substitute), C (Complement), I (Irrelevant).
+- `stage_2_label`: E (Exact), S (Substitute), C (Complement), I (Irrelevant).
 
 ### curl examples
 
@@ -299,7 +299,7 @@ Either `user_context` or `user_id` is required.
 | `query`      | string          | Yes      | User search query            |
 | `candidates` | CandidateItem[] | Yes      | List of `{product_id, text}` |
 
-**Response:** `request_id`, `ranked` (array of `{product_id, score, esci_class, is_substitute}`), `stats` (`total_latency_ms`, `model_forward_time_ms`, `num_candidates`, `num_recommendations`, `device`, `top_score`, `avg_score`, `timestamp`).
+**Response:** `request_id`, `ranked` (array of `{product_id, score, stage_2_class, is_substitute}`), `stats` (`total_latency_ms`, `model_forward_time_ms`, `num_candidates`, `num_recommendations`, `device`, `top_score`, `avg_score`, `timestamp`).
 
 **ESCI labels:** E (Exact), S (Substitute), C (Complement), I (Irrelevant).
 
@@ -308,7 +308,7 @@ Either `user_context` or `user_id` is required.
 ### Orchestrator mapping
 
 1. **Instacart → ESCI:** Convert `recommendations` to `candidates`: `product_id` → `product_id`, `product_text` (or `""` if null) → `text`.
-2. **ESCI → Final response:** Join ESCI `ranked` with Instacart metadata by `product_id`: `rec_score` from Instacart, `rerank_score`, `esci_label`, `is_substitute` from ESCI, `product_text` from Instacart.
+2. **ESCI → Final response:** Join ESCI `ranked` with Instacart metadata by `product_id`: `rec_score` from Instacart, `rerank_score`, `stage_2_label`, `is_substitute` from ESCI, `product_text` from Instacart.
 3. **Top-K:** Orchestrator applies `top_k_final` to the ESCI-ranked list before returning.
 4. **Retrieval rank:** Each item includes `retrieval_rank` (1-based index in Instacart order) for UI rank movement.
 

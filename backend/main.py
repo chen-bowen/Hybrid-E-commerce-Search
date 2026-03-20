@@ -21,10 +21,11 @@ from backend.schemas import FinalItem, TwoStageRequest, TwoStageResponse
 
 logger = logging.getLogger(__name__)
 
-stage_1_URL = os.getenv("stage_1_URL", "http://localhost:8000")
-stage_2_URL = os.getenv("stage_2_URL", "http://localhost:8001")
-stage_1_API_KEY = os.getenv("stage_1_API_KEY", "")
-stage_2_API_KEY = os.getenv("stage_2_API_KEY", "")
+
+stage_1_URL = os.getenv("STAGE_1_URL", "http://localhost:8000")
+stage_2_URL = os.getenv("STAGE_2_URL", "http://localhost:8001")
+stage_1_API_KEY = os.getenv("STAGE_1_API_KEY")
+stage_2_API_KEY = os.getenv("STAGE_2_API_KEY")
 
 app = FastAPI(title="Two-Stage Search Orchestrator")
 
@@ -84,11 +85,7 @@ async def stage1_recommend(req: TwoStageRequest) -> dict:
             detail="Provide either `user_id` or purchase history (`user_context`).",
         )
 
-    purchase_history_used = (
-        f"(resolved in Stage 1 from user_id={req.user_id})"
-        if req.user_id
-        else req.user_context
-    )
+    purchase_history_used = req.user_context
 
     stage_1_payload: dict = {
         "top_k": req.top_k_retrieve,
@@ -102,8 +99,10 @@ async def stage1_recommend(req: TwoStageRequest) -> dict:
         stage_1_payload["user_context"] = req.user_context
 
     stage_1_resp = await _call_stage_1(stage_1_payload)
-    # Echo what Stage 1 received so the UI can explain retrieval behavior.
-    stage_1_resp["purchase_history_used"] = purchase_history_used
+    # Echo what Stage 1 used (resolved from user_id or directly provided purchase history).
+    stage_1_resp["purchase_history_used"] = (
+        stage_1_resp.get("purchase_history_used") or purchase_history_used
+    )
     stage_1_resp["user_id_used"] = req.user_id
     return stage_1_resp
 
@@ -120,11 +119,7 @@ async def two_stage_search(req: TwoStageRequest) -> TwoStageResponse:
             detail="Provide either `user_id` or purchase history (`user_context`).",
         )
 
-    purchase_history_used = (
-        f"(resolved in Stage 1 from user_id={req.user_id})"
-        if req.user_id
-        else req.user_context
-    )
+    purchase_history_used = req.user_context
 
     start_time = time.perf_counter()
     request_id = str(uuid4())
@@ -144,6 +139,7 @@ async def two_stage_search(req: TwoStageRequest) -> TwoStageResponse:
 
         stage_1_resp = await _call_stage_1(stage_1_payload)
         recs = stage_1_resp.get("recommendations", [])
+        purchase_history_used = stage_1_resp.get("purchase_history_used") or purchase_history_used
 
         if not recs:
             return TwoStageResponse(
@@ -189,7 +185,7 @@ async def two_stage_search(req: TwoStageRequest) -> TwoStageResponse:
                     retrieval_rank=retrieval_rank_map.get(pid),
                     rec_score=meta.get("score", 0.0),
                     rerank_score=r.get("score", 0.0),
-                    stage_2_label=r.get("stage_2_class"),
+                    stage_2_label=r.get("esci_class"),
                     is_substitute=r.get("is_substitute"),
                     product_text=meta.get("product_text"),
                 )

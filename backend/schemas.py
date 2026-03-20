@@ -60,7 +60,7 @@ class FinalItem(BaseModel):
         ...,
         description="Reranking score from ESCI cross-encoder (Stage 2).",
     )
-    esci_label: Optional[str] = Field(
+    stage_2_label: Optional[str] = Field(
         default=None,
         description="Predicted ESCI class: E (Exact), S (Substitute), C (Complement), I (Irrelevant).",
     )

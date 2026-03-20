@@ -26,12 +26,12 @@ def test_final_item() -> None:
         retrieval_rank=1,
         rec_score=0.76,
         rerank_score=0.91,
-        esci_label="E",
+        stage_2_label="E",
         is_substitute=False,
         product_text="Whole Wheat Bread",
     )
     assert item.product_id == "13517"
-    assert item.esci_label == "E"
+    assert item.stage_2_label == "E"
 
 
 def test_two_stage_response() -> None:

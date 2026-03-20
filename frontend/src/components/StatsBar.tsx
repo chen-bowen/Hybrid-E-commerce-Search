@@ -27,13 +27,13 @@ export function StatsBar({ stats }: StatsBarProps) {
         <span className="value">{stats.num_returned ?? "-"}</span>
       </div>
       <div className="stat">
-        <span className="label">Stage 1 (Instacart)</span>
+        <span className="label">Stage 1 (Retrieval)</span>
         <span className="value">
           {instacartMs != null ? `${instacartMs.toFixed(0)}ms` : "-"}
         </span>
       </div>
       <div className="stat">
-        <span className="label">Stage 2 (ESCI)</span>
+        <span className="label">Stage 2 (Reranking)</span>
         <span className="value">
           {esciMs != null ? `${esciMs.toFixed(0)}ms` : "-"}
         </span>

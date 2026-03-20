@@ -1,6 +1,7 @@
 import { useState } from "react";
 
-const SAMPLE_USERS = ["3178496", "12345", "67890"];
+// Only include user_ids that Stage 1 can actually resolve to stored purchase history.
+const SAMPLE_USERS = ["3178496"];
 const SAMPLE_QUERIES = [
   "organic whole wheat bread",
   "low fat milk",

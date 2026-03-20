@@ -17,7 +17,7 @@ export interface FinalItem {
   retrieval_rank?: number;
   rec_score: number;
   rerank_score: number;
-  esci_label?: string;
+  stage_2_label?: string;
   is_substitute?: boolean;
   product_text?: string;
 }
