@@ -14,7 +14,7 @@ This project wires two existing systems into a **two-stage search pipeline**: **
 
 Related repos: [instacart_next_order_recommendation](https://github.com/chen-bowen/instacart_next_order_recommendation), [Amazon_Multitask_Search_Ranking](https://github.com/chen-bowen/Amazon_Multitask_Search_Ranking).
 
-**Contents:** [Quick start](#quick-start) · [Requirements](#requirements) · [Setup](#setup) · [How to use each component](#how-to-use-each-component) · [Pipeline](#pipeline) · [Architecture](#overall-architecture) · [API](#api) · [Web UI](#web-ui) · [Docker](#docker) · [Backend API contracts](#backend-api-contracts) · [Limitations](#limitations) · [Project structure](#project-structure)
+**Contents:** [Quick start](#quick-start) · [Requirements](#requirements) · [Setup](#setup) · [How to use each component](#how-to-use-each-component) · [Pipeline](#pipeline) · [Architecture](#overall-architecture) · [API](#api) · [Web UI](#web-ui) · [Docker](#docker) · [Hugging Face Space](#hugging-face-space-docker) · [Backend API contracts](#backend-api-contracts) · [Limitations](#limitations) · [Project structure](#project-structure)
 
 ---
 
@@ -28,6 +28,8 @@ docker compose up --build
 ```
 
 Open the app at `http://localhost:7860`. The gateway routes UI traffic to the frontend and `/api/*` to the orchestrator.
+
+**Hugging Face Space:** The public demo is built from this repo’s **root** `Dockerfile` only (Spaces do not run `docker-compose.yml`). See [Hugging Face Space](#hugging-face-space-docker).
 
 **Local dev:** `uv sync`, then start Stage 1 (Instacart, 8000) and Stage 2 (ESCI, 8001) from their repos, then `uv run uvicorn backend.main:app --host 0.0.0.0 --port 8080`. See [Pipeline](#pipeline) for details.
 
@@ -242,6 +244,7 @@ Either `user_id` or `user_context` is required.
     "request_id": "...",
     "num_candidates": 50,
     "num_returned": 10,
+    "purchase_history_used": "[+7d w4h14] Organic Milk, Whole Wheat Bread.",
     "stage_1_stats": { "total_latency_ms": 12.5, ... },
     "stage_2_stats": { "total_latency_ms": 45.2, ... },
     "total_latency_ms": 120.5
@@ -249,6 +252,7 @@ Either `user_id` or `user_context` is required.
 }
 ```
 
+- `stats.purchase_history_used`: Echo of the purchase-history / context string Stage 1 used for retrieval (from Stage 1’s response when available, otherwise falls back to the request’s `user_context`). The web UI shows this in the **Purchase history** panel.
 - `retrieval_rank`: 1-based rank in Stage 1 (Instacart) order; used by the UI for rank movement.
 - `rec_score`: Retrieval similarity from Instacart.
 - `rerank_score`: Relevance score from ESCI.
@@ -316,7 +320,7 @@ Request:
 
 Either `user_context` or `user_id` is required.
 
-**Response:** `request_id`, `recommendations` (array of `{product_id, score, product_text}`), `stats` (optional: `total_latency_ms`, `query_embedding_time_ms`, `similarity_compute_time_ms`, `num_recommendations`, `top_score`, `avg_score`, `timestamp`).
+**Response:** `request_id`, `recommendations` (array of `{product_id, score, product_text}`), `stats` (optional: `total_latency_ms`, `query_embedding_time_ms`, `similarity_compute_time_ms`, `num_recommendations`, `top_score`, `avg_score`, `timestamp`), and optionally **`purchase_history_used`**: the resolved purchase-history / context string used to form the retrieval query (when implemented in your Stage 1 checkout; the orchestrator echoes this into `POST /search` `stats`).
 
 **Authentication:** May require `X-API-Key` header.
 
@@ -350,7 +354,7 @@ Either `user_context` or `user_id` is required.
 
 ## Web UI
 
-A React/Vite web UI is available in `frontend/` for interactive exploration. Currently deployed via [HuggingFace Space](https://huggingface.co/spaces/chenbowen184/hybrid-ecommerce-search)
+A React/Vite web UI is available in `frontend/` for interactive exploration. Deployed from the **root** of this repository on [Hugging Face Space](https://huggingface.co/spaces/chenbowen184/hybrid-ecommerce-search) (Docker SDK, `app_port: 7860`; see [Hugging Face Space](#hugging-face-space-docker)).
 
 <img width="2026" height="1033" alt="image" src="https://github.com/user-attachments/assets/d2582e5e-8855-42ac-8e74-f090aa13d7fd" />
 
@@ -370,7 +374,8 @@ Open [http://localhost:5173](http://localhost:5173). Configure the API URL (defa
 
 - **Side-by-side view:** Stage 1 (Stage 1 Retrieval) vs Stage 2 (ESCI reranked)
 - **Diff view:** Single list with rank movement (e.g. `#2 (was #7)`)
-- **ESCI labels:** Color-coded badges (E=green, S=blue, C=orange, I=grey)
+- **ESCI labels:** Color-coded badges (E=green, S=blue, C=orange, I=grey); labels come from `stage_2_label` on each result item.
+- **Purchase history panel:** Shows `stats.purchase_history_used` from the orchestrator response when present.
 - **Stats bar:** Latency breakdown for Instacart vs ESCI
 - **Random user/query:** Quick buttons for sample inputs
 
@@ -384,6 +389,13 @@ This repo supports two Docker deployment modes:
 2. **Single-container runtime (`Dockerfile`)**: Hugging Face Docker Space-friendly image that runs nginx, Stage 1 API, Stage 2 API, orchestrator, and static frontend in one container.
 
 `docker-compose.yml` and the root `Dockerfile` are intentionally different and optimized for these two environments.
+
+**Gateway configs:**
+
+| File | Used by | Role |
+| ---- | ------- | ---- |
+| `gateway/nginx.conf` | `docker compose` (`gateway` service) | Proxies to separate `frontend` and `orchestrator` containers on the compose network. |
+| `gateway/nginx.hf.conf` | Root `Dockerfile` **runtime** stage | Single container: nginx listens on **7860**, serves the built React app from `/usr/share/nginx/html`, and proxies `/api/*`, `/docs`, `/redoc`, `/openapi.json`, `/health`, `/ready` to the orchestrator at **`127.0.0.1:8080`** (loopback avoids DNS/resolver issues in Hugging Face’s runtime). |
 
 ### A) Local multi-container (docker compose)
 
@@ -485,6 +497,33 @@ docker run --rm -p 7860:7860 -e HF_TOKEN=your_hf_token hybrid-search-space
 
 If your Hugging Face repos are public, `HF_TOKEN` can be omitted.
 
+### Hugging Face Space (Docker)
+
+This Space is the **same codebase as the repo root**—deployment is **not** a nested copy of the app. A legacy `hf-space/` path may exist locally for experiments but is **gitignored** and is not what Hugging Face builds. The README YAML frontmatter at the top configures the Space (`sdk: docker`, `app_port: 7860`).
+
+**What runs in one container**
+
+1. Stage 1 API (Instacart retriever) on port **8000**
+2. Stage 2 API (ESCI reranker) on port **8001**
+3. Orchestrator (this repo’s `backend.main`) on port **8080**
+4. **nginx** on port **7860** using `gateway/nginx.hf.conf` (static UI + reverse proxy). Static assets are served by nginx only—there is no separate Python `http.server` on port 80 (avoids port conflicts with nginx in a single container).
+
+The container startup command also appends `orchestrator` and `frontend` to `/etc/hosts` as `127.0.0.1` for compatibility with older proxy hostnames; the current `nginx.hf.conf` proxies the API directly to **127.0.0.1:8080**.
+
+**Environment**
+
+- Spaces inject **`HF_TOKEN`** for gated or rate-limited Hub access. The image mirrors it to **`HUGGINGFACE_HUB_TOKEN`** for `huggingface_hub` / `transformers`.
+- Recommended: set a token on the Space if you see slow downloads or “unauthenticated requests” warnings in logs.
+
+**Cold start / 502 behavior**
+
+- Stage 1 may spend **several minutes** on first boot downloading the corpus, model, and building the embedding index (see container logs: `Batches:` progress). Until nginx and the orchestrator are up together, you may see brief **502 Bad Gateway** responses—retry after the log shows Stage 1 **Application startup complete** and nginx is serving port 7860.
+
+**API from the browser**
+
+- UI: `https://<space>.hf.space/`
+- Orchestrator via gateway: `POST .../api/search` (rewritten to orchestrator `/search`), or `GET .../health` for a quick check.
+
 ---
 
 ## Limitations
@@ -506,8 +545,10 @@ If your Hugging Face repos are public, `HF_TOKEN` can be omitted.
 | **backend/two_stage_search.py** | CLI smoke script for `POST /search` (run: `uv run two-stage-search`)           |
 | **scripts/setup_deps.sh**       | Clone Instacart + ESCI repos into `deps/` for Docker                           |
 | **tests/**                      | Unit tests (e.g. `tests/test_schemas.py`)                                      |
-| **Dockerfile**                  | Multi-stage image: compose backend target + HF Space single-container runtime  |
+| **Dockerfile**                  | Multi-stage image: `backend-runtime` for compose orchestrator + default `runtime` for HF Space (nginx + all APIs) |
 | **docker-compose.yml**          | Local multi-container stack: Stage 1, Stage 2, orchestrator, frontend, gateway |
+| **gateway/nginx.conf**          | nginx config for **docker compose** (multi-service proxy)                       |
+| **gateway/nginx.hf.conf**       | nginx config for **HF Space** single-container (static UI + proxy to `127.0.0.1:8080`) |
 | **pyproject.toml**, **uv.lock** | Project and dependency lock (uv)                                               |
 
 ---
