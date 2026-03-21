@@ -354,7 +354,7 @@ Either `user_context` or `user_id` is required.
 
 ## Web UI
 
-A React/Vite web UI is available in `frontend/` for interactive exploration. Deployed from the **root** of this repository on [Hugging Face Space](https://huggingface.co/spaces/chenbowen184/hybrid-ecommerce-search) (Docker SDK, `app_port: 7860`; see [Hugging Face Space](#hugging-face-space-docker)).
+A React/Vite web UI is available in `frontend/` for interactive exploration. Deployed from the **root** of this repository on [Hugging Face Space](https://huggingface.co/spaces/chenbowen184/hybrid-ecommerce-search)
 
 <img width="2026" height="1033" alt="image" src="https://github.com/user-attachments/assets/d2582e5e-8855-42ac-8e74-f090aa13d7fd" />
 
